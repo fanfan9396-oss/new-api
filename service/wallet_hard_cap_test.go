@@ -79,3 +79,30 @@ func TestWalletHardCapSettlementRejectsWalletDebt(t *testing.T) {
 	}
 	assert.Equal(t, wallet, getUserQuota(t, userID))
 }
+
+func TestWalletHardCapMultipleUnlimitedKeysShareUserWallet(t *testing.T) {
+	truncate(t)
+
+	const userID = 8103
+	const wallet = 100
+	seedUser(t, userID, wallet)
+
+	ctx1, _ := gin.CreateTestContext(httptest.NewRecorder())
+	ctx2, _ := gin.CreateTestContext(httptest.NewRecorder())
+	first := &BillingSession{
+		relayInfo: &relaycommon.RelayInfo{UserId: userID, UserQuota: wallet, TokenUnlimited: true, IsPlayground: true},
+		funding:   &WalletFunding{userId: userID},
+	}
+	second := &BillingSession{
+		relayInfo: &relaycommon.RelayInfo{UserId: userID, UserQuota: wallet, TokenUnlimited: true, IsPlayground: true},
+		funding:   &WalletFunding{userId: userID},
+	}
+
+	if err := first.preConsume(ctx1, 60); err != nil {
+		t.Fatalf("first key was rejected unexpectedly: %v", err)
+	}
+	if err := second.preConsume(ctx2, 60); err == nil {
+		t.Fatalf("second unlimited key bypassed shared user wallet: wallet=%d", getUserQuota(t, userID))
+	}
+	assert.Equal(t, 40, getUserQuota(t, userID))
+}
