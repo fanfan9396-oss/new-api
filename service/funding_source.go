@@ -39,7 +39,7 @@ type WalletFunding struct {
 
 func (w *WalletFunding) Source() string { return BillingSourceWallet }
 
-func (w *WalletFunding) PreConsume(amount int) error {
+func (w *WalletFunding) reserve(amount int) error {
 	if amount <= 0 {
 		return nil
 	}
@@ -50,8 +50,12 @@ func (w *WalletFunding) PreConsume(amount int) error {
 	if !reserved {
 		return ErrInsufficientWalletQuota
 	}
-	w.consumed = amount
+	w.consumed += amount
 	return nil
+}
+
+func (w *WalletFunding) PreConsume(amount int) error {
+	return w.reserve(amount)
 }
 
 func (w *WalletFunding) Settle(delta int) error {
@@ -59,7 +63,9 @@ func (w *WalletFunding) Settle(delta int) error {
 		return nil
 	}
 	if delta > 0 {
-		return model.DecreaseUserQuota(w.userId, delta, false)
+		// Settlement must preserve the user-wallet hard cap even when actual
+		// usage exceeds the estimate. Never turn a provider request into debt.
+		return w.reserve(delta)
 	}
 	return model.IncreaseUserQuota(w.userId, -delta, false)
 }
