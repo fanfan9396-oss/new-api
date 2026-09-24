@@ -437,14 +437,23 @@ func postConsumeQuotaWithResult(relayInfo *relaycommon.RelayInfo, quota int, pre
 			relayInfo.SubscriptionPostDelta += delta
 		}
 	} else {
-		// Wallet
+		// Wallet: positive deductions must use the same atomic hard-cap
+		// reservation as BillingSession. The legacy unconditional decrement
+		// could turn a shared-provider request into a negative wallet under
+		// realtime, task, or other fallback paths.
 		if quota > 0 {
-			err = model.DecreaseUserQuota(relayInfo.UserId, quota, false)
+			reserved, reserveErr := model.TryReserveUserQuota(relayInfo.UserId, quota)
+			if reserveErr != nil {
+				return result, reserveErr
+			}
+			if !reserved {
+				return result, ErrInsufficientWalletQuota
+			}
 		} else {
 			err = model.IncreaseUserQuota(relayInfo.UserId, -quota, false)
-		}
-		if err != nil {
-			return result, err
+			if err != nil {
+				return result, err
+			}
 		}
 	}
 	result.FundingApplied = true

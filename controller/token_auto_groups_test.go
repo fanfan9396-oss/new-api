@@ -71,6 +71,44 @@ func newTokenAutoGroupsAuthenticatedContext(t *testing.T, method string, target 
 	return ctx, recorder
 }
 
+func TestAddTokenRejectsUnauthorizedGroup(t *testing.T) {
+	configureTokenAutoGroupsTest(t, "5", `["default","vip"]`)
+	user := setupTokenAutoGroupsControllerTest(t)
+	request := baseAutoTokenRequest("unauthorized-group")
+	request["group"] = "private-admin-group"
+	delete(request, "auto_groups")
+
+	ctx, recorder := newTokenAutoGroupsAuthenticatedContext(t, http.MethodPost, "/api/token/", request, user.Id)
+	AddToken(ctx)
+
+	response := decodeAPIResponse(t, recorder)
+	assert.False(t, response.Success)
+	var count int64
+	require.NoError(t, model.DB.Model(&model.Token{}).Count(&count).Error)
+	assert.Zero(t, count)
+}
+
+func TestUpdateTokenRejectsUnauthorizedGroup(t *testing.T) {
+	configureTokenAutoGroupsTest(t, "5", `["default","vip"]`)
+	user := setupTokenAutoGroupsControllerTest(t)
+	token := &model.Token{UserId: user.Id, Name: "group-owner", Key: "group-owner-key", Status: common.TokenStatusEnabled, ExpiredTime: -1, UnlimitedQuota: true, Group: "default"}
+	require.NoError(t, model.DB.Create(token).Error)
+
+	request := baseAutoTokenRequest("group-owner")
+	request["id"] = token.Id
+	request["group"] = "private-admin-group"
+	delete(request, "auto_groups")
+
+	ctx, recorder := newTokenAutoGroupsAuthenticatedContext(t, http.MethodPut, "/api/token/", request, user.Id)
+	UpdateToken(ctx)
+
+	response := decodeAPIResponse(t, recorder)
+	assert.False(t, response.Success)
+	var stored model.Token
+	require.NoError(t, model.DB.First(&stored, token.Id).Error)
+	assert.Equal(t, "default", stored.Group)
+}
+
 func TestAddTokenEmptyAutoGroupsInheritGlobalAuto(t *testing.T) {
 	tests := []struct {
 		name         string

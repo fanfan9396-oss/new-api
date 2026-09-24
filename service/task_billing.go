@@ -118,7 +118,14 @@ func taskAdjustFunding(task *model.Task, delta int) error {
 		return model.PostConsumeUserSubscriptionDelta(task.PrivateData.SubscriptionId, int64(delta))
 	}
 	if delta > 0 {
-		return model.DecreaseUserQuota(task.UserId, delta, false)
+		reserved, err := model.TryReserveUserQuota(task.UserId, delta)
+		if err != nil {
+			return err
+		}
+		if !reserved {
+			return ErrInsufficientWalletQuota
+		}
+		return nil
 	}
 	return model.IncreaseUserQuota(task.UserId, -delta, false)
 }

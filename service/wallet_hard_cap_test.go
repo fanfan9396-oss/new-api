@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/QuantumNous/new-api/common"
+	"github.com/QuantumNous/new-api/model"
 	relaycommon "github.com/QuantumNous/new-api/relay/common"
 	"github.com/QuantumNous/new-api/setting/operation_setting"
 	"github.com/gin-gonic/gin"
@@ -76,6 +77,40 @@ func TestWalletHardCapSettlementRejectsWalletDebt(t *testing.T) {
 	// as an explicit insufficient-wallet result by the owner boundary.
 	if err == nil {
 		t.Fatalf("settlement admitted wallet debt: wallet=%d", getUserQuota(t, userID))
+	}
+	assert.Equal(t, wallet, getUserQuota(t, userID))
+}
+
+func TestWalletHardCapLegacyPostConsumeRejectsWalletDebt(t *testing.T) {
+	truncate(t)
+
+	const userID = 8104
+	const wallet = 100
+	const actual = 200
+	seedUser(t, userID, wallet)
+
+	relayInfo := &relaycommon.RelayInfo{
+		UserId:       userID,
+		IsPlayground: true,
+	}
+
+	err := PostConsumeQuota(relayInfo, actual, 0, false)
+	if err == nil {
+		t.Fatalf("legacy post-consume admitted wallet debt: wallet=%d", getUserQuota(t, userID))
+	}
+	assert.Equal(t, wallet, getUserQuota(t, userID))
+}
+
+func TestWalletHardCapTaskSettlementRejectsWalletDebt(t *testing.T) {
+	truncate(t)
+
+	const userID = 8105
+	const wallet = 100
+	seedUser(t, userID, wallet)
+
+	err := taskAdjustFunding(&model.Task{UserId: userID}, 200)
+	if err == nil {
+		t.Fatalf("task settlement admitted wallet debt: wallet=%d", getUserQuota(t, userID))
 	}
 	assert.Equal(t, wallet, getUserQuota(t, userID))
 }

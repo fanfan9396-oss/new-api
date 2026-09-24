@@ -255,13 +255,13 @@ func TestPreConsumePolicyDatabaseMatrix(t *testing.T) {
 				force, unlimited      bool
 				wantHeld              int
 			}{
-				{"above threshold", 10, 1, 5500000, 5500000, false, false, 0},
+				{"above threshold", 10, 1, 5500000, 5500000, false, false, 1500},
 				{"custom threshold", 20, 1, 5500000, 5500000, false, false, 1500},
 				{"zero disables bypass", 0, 1, 5500000, 5500000, false, false, 1500},
 				{"wallet equals threshold", 10, 1, 5000000, 5500000, false, false, 1500},
 				{"token equals threshold", 10, 1, 5500000, 5000000, false, false, 1500},
-				{"fractional threshold", 10.5, 1, 5250001, 5250001, false, false, 0},
-				{"unlimited token", 10, 1, 5500000, 0, false, true, 0},
+				{"fractional threshold", 10.5, 1, 5250001, 5250001, false, false, 1500},
+				{"unlimited token still reserves wallet", 10, 1, 5500000, 0, false, true, 1500},
 				{"forced reservation", 10, 1, 5500000, 5500000, true, false, 1500},
 				{"half input cost", 0, 0.5, 100000, 100000, false, false, 750},
 				{"fractional multiple refunds excess", 0, 2.5, 100000, 100000, false, false, 3750},
