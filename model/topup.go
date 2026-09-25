@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"maps"
+	"strings"
 
 	"github.com/QuantumNous/new-api/common"
 	"github.com/QuantumNous/new-api/logger"
@@ -44,6 +45,7 @@ const (
 
 var (
 	ErrPaymentMethodMismatch    = errors.New("payment method mismatch")
+	ErrTopUpAmountMismatch      = errors.New("payment amount mismatch")
 	ErrTopUpNotFound            = errors.New("topup not found")
 	ErrTopUpStatusInvalid       = errors.New("topup status invalid")
 	ErrInvalidTopUpQuota        = errors.New("invalid top-up quota")
@@ -174,6 +176,18 @@ func UpdatePendingTopUpStatus(tradeNo string, expectedPaymentProvider string, ta
 // alreadyDone=true 表示订单此前已完成，本次为幂等重复回调。
 // 进程内的 LockOrder 只是优化，正确性由本函数的数据库行锁保证。
 func RechargeEpay(tradeNo string, actualPaymentMethod string, callerIp string) (alreadyDone bool, err error) {
+	return rechargeEpay(tradeNo, actualPaymentMethod, "", callerIp)
+}
+
+// RechargeEpayWithAmount completes an Epay order only when the signed callback
+// amount matches the amount captured in the pending order. The legacy
+// RechargeEpay entry point remains for trusted internal/admin paths that do not
+// have a gateway callback amount.
+func RechargeEpayWithAmount(tradeNo string, actualPaymentMethod string, callbackMoney string, callerIp string) (alreadyDone bool, err error) {
+	return rechargeEpay(tradeNo, actualPaymentMethod, callbackMoney, callerIp)
+}
+
+func rechargeEpay(tradeNo string, actualPaymentMethod string, callbackMoney string, callerIp string) (alreadyDone bool, err error) {
 	if tradeNo == "" {
 		return false, errors.New("未提供支付单号")
 	}
@@ -198,6 +212,12 @@ func RechargeEpay(tradeNo string, actualPaymentMethod string, callerIp string) (
 		}
 		if topUp.Status != common.TopUpStatusPending {
 			return ErrTopUpStatusInvalid
+		}
+		if callbackMoney != "" {
+			callbackAmount, parseErr := decimal.NewFromString(strings.TrimSpace(callbackMoney))
+			if parseErr != nil || callbackAmount.Round(2).Cmp(decimal.NewFromFloat(topUp.Money).Round(2)) != 0 {
+				return ErrTopUpAmountMismatch
+			}
 		}
 		if actualPaymentMethod != "" && topUp.PaymentMethod != actualPaymentMethod {
 			topUp.PaymentMethod = actualPaymentMethod

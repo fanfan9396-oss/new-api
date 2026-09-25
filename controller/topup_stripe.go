@@ -364,7 +364,7 @@ func genStripeLink(referenceId string, customerId string, email string, amount i
 
 	// Use custom URLs if provided, otherwise use defaults
 	if successURL == "" {
-		successURL = paymentReturnPath("/usage-logs")
+		successURL = paymentReturnPath("/wallet?show_history=true")
 	}
 	if cancelURL == "" {
 		cancelURL = paymentReturnPath("/wallet")

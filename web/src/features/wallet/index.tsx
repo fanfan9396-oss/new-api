@@ -376,6 +376,7 @@ export function Wallet(props: WalletProps) {
       <BillingHistoryDialog
         open={billingDialogOpen}
         onOpenChange={setBillingDialogOpen}
+        onDataRefresh={fetchUser}
       />
 
       <CreemConfirmDialog

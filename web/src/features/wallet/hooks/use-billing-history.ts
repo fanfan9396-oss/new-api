@@ -41,10 +41,23 @@ interface UseBillingHistoryOptions {
   initialPage?: number
   /** Initial page size */
   initialPageSize?: number
+  /** Whether the history view is currently visible */
+  enabled?: boolean
+  /** Refresh the wallet summary after a billing response */
+  onDataRefresh?: () => void | Promise<void>
+}
+
+interface FetchBillingHistoryOptions {
+  silent?: boolean
 }
 
 export function useBillingHistory(options: UseBillingHistoryOptions = {}) {
-  const { initialPage = 1, initialPageSize = 10 } = options
+  const {
+    initialPage = 1,
+    initialPageSize = 10,
+    enabled = true,
+    onDataRefresh,
+  } = options
   const isAdmin = useIsAdmin()
 
   const [records, setRecords] = useState<TopupRecord[]>([])
@@ -60,35 +73,44 @@ export function useBillingHistory(options: UseBillingHistoryOptions = {}) {
   /**
    * Fetch billing history
    */
-  const fetchBillingHistory = useCallback(async () => {
-    const requestId = ++requestIdRef.current
-    setLoading(true)
-    try {
-      const response = isAdmin
-        ? await getAllBillingHistory(page, pageSize, debouncedKeyword)
-        : await getUserBillingHistory(page, pageSize, debouncedKeyword)
+  const fetchBillingHistory = useCallback(
+    async ({ silent = false }: FetchBillingHistoryOptions = {}) => {
+      const requestId = ++requestIdRef.current
+      if (!silent) {
+        setLoading(true)
+      }
+      try {
+        const response = isAdmin
+          ? await getAllBillingHistory(page, pageSize, debouncedKeyword)
+          : await getUserBillingHistory(page, pageSize, debouncedKeyword)
 
-      if (requestId !== requestIdRef.current) return
+        if (requestId !== requestIdRef.current) return
 
-      if (isApiSuccess(response) && response.data) {
-        setRecords(response.data.items || [])
-        setTotal(response.data.total || 0)
-      } else {
-        handleServerError(response, i18next.t('Failed to load billing history'))
+        if (isApiSuccess(response) && response.data) {
+          setRecords(response.data.items || [])
+          setTotal(response.data.total || 0)
+          await onDataRefresh?.()
+        } else {
+          handleServerError(
+            response,
+            i18next.t('Failed to load billing history')
+          )
+          setRecords([])
+          setTotal(0)
+        }
+      } catch (error) {
+        if (requestId !== requestIdRef.current) return
+        handleServerError(error, i18next.t('Failed to load billing history'))
         setRecords([])
         setTotal(0)
+      } finally {
+        if (!silent && requestId === requestIdRef.current) {
+          setLoading(false)
+        }
       }
-    } catch (error) {
-      if (requestId !== requestIdRef.current) return
-      handleServerError(error, i18next.t('Failed to load billing history'))
-      setRecords([])
-      setTotal(0)
-    } finally {
-      if (requestId === requestIdRef.current) {
-        setLoading(false)
-      }
-    }
-  }, [debouncedKeyword, isAdmin, page, pageSize])
+    },
+    [debouncedKeyword, isAdmin, onDataRefresh, page, pageSize]
+  )
 
   /**
    * Complete a pending order (admin only)
@@ -148,10 +170,26 @@ export function useBillingHistory(options: UseBillingHistoryOptions = {}) {
 
   // Fetch data after the search draft has settled.
   useEffect(() => {
-    if (keyword !== debouncedKeyword) return
+    if (!enabled || keyword !== debouncedKeyword) return
 
-    fetchBillingHistory()
-  }, [debouncedKeyword, fetchBillingHistory, keyword])
+    void fetchBillingHistory()
+  }, [debouncedKeyword, enabled, fetchBillingHistory, keyword])
+
+  // Payment gateways complete orders asynchronously. While the history dialog
+  // is open, refresh pending orders without showing a loading skeleton so the
+  // user can see success/failed state and the updated wallet after returning
+  // from the payment page.
+  useEffect(() => {
+    if (!enabled || !records.some((record) => record.status === 'pending')) {
+      return
+    }
+
+    const timer = window.setInterval(() => {
+      void fetchBillingHistory({ silent: true })
+    }, 5000)
+
+    return () => window.clearInterval(timer)
+  }, [enabled, fetchBillingHistory, records])
 
   return {
     records,
