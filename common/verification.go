@@ -55,6 +55,21 @@ func VerifyCodeWithKey(key string, code string, purpose string) bool {
 	return code == value.code
 }
 
+// ConsumeCodeWithKey atomically verifies and consumes a one-time verification code.
+// It is intended for security-sensitive flows such as password reset where
+// concurrent submissions must not both succeed.
+func ConsumeCodeWithKey(key string, code string, purpose string) bool {
+	verificationMutex.Lock()
+	defer verificationMutex.Unlock()
+	value, okay := verificationMap[purpose+key]
+	now := time.Now()
+	if !okay || int(now.Sub(value.time).Seconds()) >= VerificationValidMinutes*60 || code != value.code {
+		return false
+	}
+	delete(verificationMap, purpose+key)
+	return true
+}
+
 func DeleteKey(key string, purpose string) {
 	verificationMutex.Lock()
 	defer verificationMutex.Unlock()

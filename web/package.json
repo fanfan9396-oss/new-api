@@ -15,6 +15,7 @@
     "format:plugins:check": "cd ../plugins && oxfmt -c .oxfmtrc.json --check .",
     "preview": "rsbuild preview",
     "test": "vitest run",
+    "test:stable": "vitest run --pool=forks --maxWorkers=1 --no-file-parallelism",
     "test:watch": "vitest",
     "format:check": "node scripts/format-with-protected-headers.mjs --check",
     "format": "node scripts/format-with-protected-headers.mjs --write",
