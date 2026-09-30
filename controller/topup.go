@@ -197,6 +197,8 @@ func getTopUpQuota(amount int64) (int, error) {
 		quotaPerUnit := decimal.NewFromFloat(common.QuotaPerUnit)
 		quota = decimal.NewFromInt(quota.Div(quotaPerUnit).IntPart()).Mul(quotaPerUnit)
 	} else {
+		// The user-facing top-up amount is the USD quota amount. The Epay
+		// Price setting separately defines how many CNY are charged per USD.
 		quota = quota.Mul(decimal.NewFromFloat(common.QuotaPerUnit))
 	}
 	return common.WalletQuotaFromDecimalStrict(quota)
@@ -279,6 +281,11 @@ func RequestEpay(c *gin.Context) {
 		return
 	}
 	id := c.GetInt("id")
+	creditedQuota, quotaErr := getTopUpQuota(req.Amount)
+	if quotaErr != nil {
+		c.JSON(http.StatusOK, gin.H{"message": "error", "data": quotaErr.Error()})
+		return
+	}
 	if rejectInvalidTopUpQuota(c, id, req.Amount) {
 		return
 	}
@@ -332,6 +339,7 @@ func RequestEpay(c *gin.Context) {
 	topUp := &model.TopUp{
 		UserId:          id,
 		Amount:          amount,
+		CreditedQuota:   int64(creditedQuota),
 		Money:           payMoney,
 		TradeNo:         tradeNo,
 		PaymentMethod:   req.PaymentMethod,

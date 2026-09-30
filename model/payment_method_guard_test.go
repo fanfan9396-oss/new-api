@@ -353,3 +353,21 @@ func TestRechargeEpayEnforcesFinalWalletQuotaLimit(t *testing.T) {
 		})
 	}
 }
+
+func TestRechargeEpayUsesCreditedQuotaSnapshot(t *testing.T) {
+	truncateTables(t)
+
+	oldQuotaPerUnit := common.QuotaPerUnit
+	common.QuotaPerUnit = 500000
+	t.Cleanup(func() { common.QuotaPerUnit = oldQuotaPerUnit })
+
+	user := insertUserForPaymentGuardTest(t, 509, 0)
+	order := createEpayTestOrder(t, user.Id, "EPAYTESTSNAPSHOT", PaymentProviderEpay, common.TopUpStatusPending)
+	order.CreditedQuota = 68493
+	require.NoError(t, DB.Model(&TopUp{}).Where("id = ?", order.Id).Update("credited_quota", order.CreditedQuota).Error)
+
+	alreadyDone, err := RechargeEpayWithAmount(order.TradeNo, "alipay", "10.00", "127.0.0.1")
+	require.NoError(t, err)
+	assert.False(t, alreadyDone)
+	assert.Equal(t, 68493, getUserQuotaForPaymentGuardTest(t, user.Id))
+}

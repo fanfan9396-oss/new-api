@@ -201,3 +201,41 @@ func TestStripeCreditedQuotaIncludesGroupRatio(t *testing.T) {
 	require.NoError(t, common.UpdateTopupGroupRatioByJSONString(`{"free":0}`))
 	assert.True(t, decimal.NewFromInt(500000).Equal(getStripeCreditedQuota(1, "free")))
 }
+
+func TestOneCNYBuysOneUSDQuota(t *testing.T) {
+	oldQuotaPerUnit := common.QuotaPerUnit
+	oldDisplayType := operation_setting.GetGeneralSetting().QuotaDisplayType
+	oldExchangeRate := operation_setting.USDExchangeRate
+	oldPrice := operation_setting.Price
+	common.QuotaPerUnit = 500000
+	operation_setting.GetGeneralSetting().QuotaDisplayType = operation_setting.QuotaDisplayTypeUSD
+	operation_setting.USDExchangeRate = 7.3
+	operation_setting.Price = 1
+	t.Cleanup(func() {
+		common.QuotaPerUnit = oldQuotaPerUnit
+		operation_setting.GetGeneralSetting().QuotaDisplayType = oldDisplayType
+		operation_setting.USDExchangeRate = oldExchangeRate
+		operation_setting.Price = oldPrice
+	})
+
+	quota, err := getTopUpQuota(1)
+	require.NoError(t, err)
+	assert.Equal(t, 500000, quota)
+	assert.InDelta(t, 1.0, getPayMoney(1, "default"), 0.000001)
+}
+
+func TestGetPayMoneyUsesCNYPricePerUSDQuota(t *testing.T) {
+	oldDisplayType := operation_setting.GetGeneralSetting().QuotaDisplayType
+	oldExchangeRate := operation_setting.USDExchangeRate
+	oldPrice := operation_setting.Price
+	operation_setting.GetGeneralSetting().QuotaDisplayType = operation_setting.QuotaDisplayTypeUSD
+	operation_setting.USDExchangeRate = 7.3
+	operation_setting.Price = 1
+	t.Cleanup(func() {
+		operation_setting.GetGeneralSetting().QuotaDisplayType = oldDisplayType
+		operation_setting.USDExchangeRate = oldExchangeRate
+		operation_setting.Price = oldPrice
+	})
+
+	assert.InDelta(t, 1.0, getPayMoney(1, "default"), 0.000001)
+}
