@@ -62,7 +62,7 @@ afterEach(() => {
 
 it('filters history on the server and resets pagination without hiding active tasks', async () => {
   const get = vi.spyOn(api, 'get').mockImplementation(async (_url, config) => {
-    if (config?.params?.scope === 'active') {
+    if ((config?.params as { scope?: string } | undefined)?.scope === 'active') {
       return {
         data: {
           success: true,
@@ -135,7 +135,7 @@ it('requires confirmation and cleans all matching history pages using the select
   vi.spyOn(api, 'get').mockImplementation(async (_url, config) => ({
     data: {
       success: true,
-      data: config?.params?.scope === 'active' ? [] : [task],
+      data: (config?.params as { scope?: string } | undefined)?.scope === 'active' ? [] : [task],
       total: 21,
     },
   }))
@@ -218,7 +218,7 @@ it('retains the confirmation and shows the server error when cleanup fails', asy
 it('shows history query failures without hiding active tasks and allows retry', async () => {
   let historyFailed = true
   vi.spyOn(api, 'get').mockImplementation(async (_url, config) => {
-    if (config?.params?.scope === 'history' && historyFailed) {
+    if ((config?.params as { scope?: string } | undefined)?.scope === 'history' && historyFailed) {
       return { data: { success: false, message: 'History unavailable' } }
     }
     return {
@@ -228,7 +228,7 @@ it('shows history query failures without hiding active tasks and allows retry', 
           {
             ...task,
             locked_by:
-              config?.params?.scope === 'active'
+              (config?.params as { scope?: string } | undefined)?.scope === 'active'
                 ? 'active-runner'
                 : 'history-runner',
           },
@@ -254,7 +254,7 @@ it('shows history query failures without hiding active tasks and allows retry', 
 it('refreshes history when the last running task finishes', async () => {
   let finished = false
   vi.spyOn(api, 'get').mockImplementation(async (_url, config) => {
-    const active = config?.params?.scope === 'active'
+    const active = (config?.params as { scope?: string } | undefined)?.scope === 'active'
     const data =
       active === finished
         ? []
