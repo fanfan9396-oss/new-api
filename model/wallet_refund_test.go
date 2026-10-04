@@ -56,3 +56,16 @@ func TestCompleteWalletRefundRejectsNegativeBalanceAndIsIdempotent(t *testing.T)
 	require.NoError(t, DB.First(&unfrozen, user.Id).Error)
 	assert.False(t, unfrozen.WalletFrozen)
 }
+
+func TestGetActiveWalletRefundFindsReviewingRecord(t *testing.T) {
+	truncateTables(t)
+	require.NoError(t, DB.AutoMigrate(&WalletRefund{}))
+	user := User{Username: "refund-lookup-user", Password: "password", Role: common.RoleCommonUser, Status: common.UserStatusEnabled, Group: "default", AuthVersion: 1, Quota: 10}
+	require.NoError(t, DB.Create(&user).Error)
+	created, err := BeginWalletRefund(user.Id, common.RoleRootUser, 99, "trade-refund-lookup", "manual review")
+	require.NoError(t, err)
+	found, err := GetActiveWalletRefund(created.TradeNo)
+	require.NoError(t, err)
+	require.NotNil(t, found)
+	assert.Equal(t, created.ID, found.ID)
+}

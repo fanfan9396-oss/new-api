@@ -27,6 +27,16 @@ type CancelWalletRefundRequest struct {
 	Reason   string `json:"reason" binding:"required"`
 }
 
+func GetActiveWalletRefund(c *gin.Context) {
+	tradeNo := c.Query("trade_no")
+	refund, err := model.GetActiveWalletRefund(tradeNo)
+	if err != nil {
+		common.ApiError(c, err)
+		return
+	}
+	common.ApiSuccess(c, refund)
+}
+
 func StartWalletRefund(c *gin.Context) {
 	var req StartWalletRefundRequest
 	if err := c.ShouldBindJSON(&req); err != nil {

@@ -38,6 +38,18 @@ type WalletRefund struct {
 	CompletedAt int64  `json:"completed_at"`
 }
 
+func GetActiveWalletRefund(tradeNo string) (*WalletRefund, error) {
+	if strings.TrimSpace(tradeNo) == "" {
+		return nil, ErrWalletRefundInvalid
+	}
+	var refund WalletRefund
+	err := DB.Where("trade_no = ? AND status = ?", tradeNo, WalletRefundStatusReviewing).First(&refund).Error
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		return nil, nil
+	}
+	return &refund, err
+}
+
 func setWalletFrozenTx(tx *gorm.DB, userID int, frozen bool) error {
 	if _, err := IncrementUserAuthVersionWithTx(tx, userID); err != nil {
 		return err

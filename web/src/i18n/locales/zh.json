@@ -6648,6 +6648,7 @@
     "Failed to start refund processing": "开始退款处理失败",
     "Failed to complete refund processing": "完成退款处理失败",
     "Failed to cancel refund processing": "取消退款处理失败",
+    "Failed to load refund processing": "加载退款处理状态失败",
     "Wallet management and personal preferences.": "钱包管理和个人偏好设置。",
     "Wallet Only": "仅用钱包",
     "Wallet pre-consume bypass threshold (USD)": "钱包免预扣门槛（美元）",

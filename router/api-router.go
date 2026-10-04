@@ -149,6 +149,7 @@ func SetApiRouter(router *gin.Engine) {
 				adminRoute.POST("/topup/complete", controller.AdminCompleteTopUp)
 				adminRoute.POST("/wallet/freeze", controller.SetUserWalletFrozen)
 				adminRoute.POST("/wallet/refunds/start", controller.StartWalletRefund)
+				adminRoute.GET("/wallet/refunds/active", controller.GetActiveWalletRefund)
 				adminRoute.POST("/wallet/refunds/complete", controller.CompleteWalletRefund)
 				adminRoute.POST("/wallet/refunds/cancel", controller.CancelWalletRefund)
 				adminRoute.GET("/search", controller.SearchUsers)

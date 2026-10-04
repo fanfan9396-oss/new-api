@@ -6648,6 +6648,7 @@
     "Failed to start refund processing": "Failed to start refund processing",
     "Failed to complete refund processing": "Failed to complete refund processing",
     "Failed to cancel refund processing": "Failed to cancel refund processing",
+    "Failed to load refund processing": "Failed to load refund processing",
     "Wallet management and personal preferences.": "Wallet management and personal preferences.",
     "Wallet Only": "Wallet Only",
     "Wallet pre-consume bypass threshold (USD)": "Wallet pre-consume bypass threshold (USD)",

@@ -662,6 +662,7 @@ export const STATIC_I18N_KEYS = [
   'Failed to start refund processing',
   'Failed to complete refund processing',
   'Failed to cancel refund processing',
+  'Failed to load refund processing',
   'Balance and top-up management',
   'Personal Settings',
   'Personal info settings',

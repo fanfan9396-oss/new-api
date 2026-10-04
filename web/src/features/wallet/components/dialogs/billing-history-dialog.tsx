@@ -53,7 +53,7 @@ import { formatNumber } from '@/lib/format'
 
 import { useBillingHistory } from '../../hooks/use-billing-history'
 import type { TopupRecord } from '../../types'
-import { cancelWalletRefund, completeWalletRefund, startWalletRefund, isApiSuccess } from '../../api'
+import { cancelWalletRefund, completeWalletRefund, getActiveWalletRefund, startWalletRefund, isApiSuccess } from '../../api'
 import {
   getStatusConfig,
   getPaymentMethodName,
@@ -126,6 +126,24 @@ export function BillingHistoryDialog({
     } catch (error) {
       handleServerError(error, t('Failed to start refund processing'))
     } finally { setRefundLoading(false) }
+  }
+
+  const openRefund = async (record: TopupRecord) => {
+    setRefundRecord(record)
+    setRefundLoading(true)
+    try {
+      const response = await getActiveWalletRefund(record.trade_no)
+      if (isApiSuccess(response) && response.data) {
+        setRefundId(response.data.id)
+        setRefundReason(response.data.reason)
+        setRefundProof(response.data.proof_ref)
+        setDeductQuota(response.data.deduct_quota > 0 ? String(response.data.deduct_quota) : '')
+      }
+    } catch (error) {
+      handleServerError(error, t('Failed to load refund processing'))
+    } finally {
+      setRefundLoading(false)
+    }
   }
 
   const handleCompleteRefund = async () => {
@@ -331,7 +349,7 @@ export function BillingHistoryDialog({
                       {/* Admin Actions */}
                       {isAdmin && record.status === 'success' && (
                         <div className='mt-4 flex justify-end'>
-                          <Button size='sm' variant='outline' onClick={() => setRefundRecord(record)}>
+                          <Button size='sm' variant='outline' onClick={() => void openRefund(record)}>
                             {t('Refund processing')}
                           </Button>
                         </div>

@@ -257,6 +257,15 @@ export async function startWalletRefund(request: {
   return res.data
 }
 
+export async function getActiveWalletRefund(
+  tradeNo: string
+): Promise<ApiResponse<WalletRefundRecord | null>> {
+  const res = await api.get(
+    `/api/user/wallet/refunds/active?trade_no=${encodeURIComponent(tradeNo)}`
+  )
+  return res.data
+}
+
 export async function completeWalletRefund(request: {
   refund_id: number
   deduct_quota: number
