@@ -82,6 +82,27 @@ describe('dialog viewport layout', () => {
     )
   })
 
+  test('billing history keeps page viewport fixed while records scroll internally', () => {
+    render(
+      <Dialog
+        open
+        title='Billing history'
+        contentClassName='overflow-hidden overscroll-contain'
+        bodyClassName='flex min-h-0 flex-1 flex-col'
+      >
+        <div className='min-h-0 flex-1 overflow-y-auto overscroll-contain'>
+          Billing records
+        </div>
+      </Dialog>
+    )
+    const dialog = screen.getByRole('dialog', { name: 'Billing history' })
+    expect(dialog).toHaveClass('overflow-hidden', 'overscroll-contain')
+    expect(screen.getByText('Billing records').parentElement?.parentElement).toHaveClass(
+      'overflow-y-auto',
+      'overscroll-contain'
+    )
+  })
+
   test('confirmation dialogs scroll overflowing content and keep confirmation usable', async () => {
     const onConfirm = vi.fn()
     render(

@@ -175,22 +175,6 @@ export function useBillingHistory(options: UseBillingHistoryOptions = {}) {
     void fetchBillingHistory()
   }, [debouncedKeyword, enabled, fetchBillingHistory, keyword])
 
-  // Payment gateways complete orders asynchronously. While the history dialog
-  // is open, refresh pending orders without showing a loading skeleton so the
-  // user can see success/failed state and the updated wallet after returning
-  // from the payment page.
-  useEffect(() => {
-    if (!enabled || !records.some((record) => record.status === 'pending')) {
-      return
-    }
-
-    const timer = window.setInterval(() => {
-      void fetchBillingHistory({ silent: true })
-    }, 5000)
-
-    return () => window.clearInterval(timer)
-  }, [enabled, fetchBillingHistory, records])
-
   return {
     records,
     total,
