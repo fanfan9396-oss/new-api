@@ -105,9 +105,9 @@ export function BillingHistoryDialog({
         description={t(
           'View your topup transaction records and payment history'
         )}
-        contentClassName='flex max-h-(--dialog-available-height) flex-col max-sm:w-screen max-sm:max-w-none max-sm:rounded-none max-sm:p-4 sm:max-w-4xl'
+        contentClassName='flex max-h-(--dialog-available-height) flex-col overflow-hidden overscroll-contain max-sm:w-screen max-sm:max-w-none max-sm:rounded-none max-sm:p-4 sm:max-w-4xl'
         contentHeight='auto'
-        bodyClassName='space-y-3'
+        bodyClassName='flex min-h-0 flex-1 flex-col space-y-3'
       >
         <div className='min-h-0 space-y-3'>
           {/* Search and Filter Bar */}
@@ -148,7 +148,7 @@ export function BillingHistoryDialog({
           </div>
 
           {/* Records List */}
-          <div className='max-h-[min(54vh,520px)] overflow-y-auto pr-1'>
+          <div className='min-h-0 max-h-[min(54vh,520px)] flex-1 overflow-y-auto overscroll-contain pr-1'>
             {loading && (
               <div className='space-y-3'>
                 {['first', 'second', 'third', 'fourth', 'fifth'].map(
