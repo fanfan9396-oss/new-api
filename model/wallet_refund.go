@@ -78,7 +78,25 @@ func BeginWalletRefund(userID, operatorRole, operatorID int, tradeNo, reason str
 			return ErrUserQuotaPermission
 		}
 		var existing WalletRefund
-		if err := tx.Where("trade_no = ?", tradeNo).First(&existing).Error; err == nil {
+		if err := lockForUpdate(tx).Where("trade_no = ?", tradeNo).First(&existing).Error; err == nil {
+			if existing.Status == WalletRefundStatusCancelled {
+				if err := setWalletFrozenTx(tx, userID, true); err != nil {
+					return err
+				}
+				now := common.GetTimestamp()
+				existing.Status = WalletRefundStatusReviewing
+				existing.Reason = reason
+				existing.ProofRef = ""
+				existing.DeductQuota = 0
+				existing.OperatorID = operatorID
+				existing.UpdatedAt = now
+				existing.CompletedAt = 0
+				if err := tx.Save(&existing).Error; err != nil {
+					return err
+				}
+				refund = &existing
+				return nil
+			}
 			return ErrWalletRefundAlreadyActive
 		} else if !errors.Is(err, gorm.ErrRecordNotFound) {
 			return err

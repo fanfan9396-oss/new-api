@@ -69,3 +69,22 @@ func TestGetActiveWalletRefundFindsReviewingRecord(t *testing.T) {
 	require.NotNil(t, found)
 	assert.Equal(t, created.ID, found.ID)
 }
+
+func TestCancelledWalletRefundCanBeRestarted(t *testing.T) {
+	truncateTables(t)
+	require.NoError(t, DB.AutoMigrate(&WalletRefund{}))
+	user := User{Username: "refund-restart-user", Password: "password", Role: common.RoleCommonUser, Status: common.UserStatusEnabled, Group: "default", AuthVersion: 1, Quota: 10}
+	require.NoError(t, DB.Create(&user).Error)
+	created, err := BeginWalletRefund(user.Id, common.RoleRootUser, 99, "trade-refund-restart", "first review")
+	require.NoError(t, err)
+	require.NoError(t, CancelWalletRefund(created.ID, "cancelled first attempt"))
+
+	restarted, err := BeginWalletRefund(user.Id, common.RoleRootUser, 100, "trade-refund-restart", "second review")
+	require.NoError(t, err)
+	assert.Equal(t, created.ID, restarted.ID)
+	assert.Equal(t, WalletRefundStatusReviewing, restarted.Status)
+	assert.Equal(t, "second review", restarted.Reason)
+	var frozen User
+	require.NoError(t, DB.First(&frozen, user.Id).Error)
+	assert.True(t, frozen.WalletFrozen)
+}
