@@ -449,6 +449,10 @@ func TokenAuth() func(c *gin.Context) {
 			abortWithOpenAiMessage(c, http.StatusForbidden, common.TranslateMessage(c, i18n.MsgAuthUserBanned))
 			return
 		}
+		if userCache.WalletFrozen {
+			abortWithOpenAiMessage(c, http.StatusForbidden, "账户额度正在处理，暂时无法使用模型")
+			return
+		}
 
 		userCache.WriteContext(c)
 

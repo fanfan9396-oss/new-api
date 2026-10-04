@@ -73,6 +73,32 @@ func TestUserAuthFenceRollbackExpiresAndRecovers(t *testing.T) {
 	assert.EqualValues(t, 1, cached.AuthVersion)
 }
 
+func TestSetWalletFrozenPublishesModelRequestBlockState(t *testing.T) {
+	truncateTables(t)
+	useUserCacheMiniRedis(t)
+
+	user := User{
+		Username:    "wallet-freeze-user",
+		Password:    "password",
+		Role:        common.RoleCommonUser,
+		Status:      common.UserStatusEnabled,
+		Group:       "default",
+		AuthVersion: 1,
+	}
+	require.NoError(t, DB.Create(&user).Error)
+	require.NoError(t, populateUserCache(user))
+
+	require.NoError(t, SetWalletFrozen(user.Id, true))
+	cached, err := GetUserCache(user.Id)
+	require.NoError(t, err)
+	assert.True(t, cached.WalletFrozen)
+
+	require.NoError(t, SetWalletFrozen(user.Id, false))
+	cached, err = GetUserCache(user.Id)
+	require.NoError(t, err)
+	assert.False(t, cached.WalletFrozen)
+}
+
 func TestPendingUserAuthFenceRejectsStaleCacheWrite(t *testing.T) {
 	server := useUserCacheMiniRedis(t)
 	const userID = 4201

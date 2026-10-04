@@ -75,16 +75,17 @@ end
 redis.call('HSET', KEYS[1],
   'Id', ARGV[2], 'Group', ARGV[3], 'Email', ARGV[4],
   'Status', ARGV[5], 'Role', ARGV[6], 'Username', ARGV[7],
-  'Setting', ARGV[8], 'AuthVersion', ARGV[1], 'CacheSchema', ARGV[9])
-if ARGV[10] == '1' and redis.call('HEXISTS', KEYS[1], 'Quota') == 0 then
-  redis.call('HSET', KEYS[1], 'Quota', ARGV[11])
+  'Setting', ARGV[8], 'WalletFrozen', ARGV[9],
+  'AuthVersion', ARGV[1], 'CacheSchema', ARGV[10])
+if ARGV[11] == '1' and redis.call('HEXISTS', KEYS[1], 'Quota') == 0 then
+  redis.call('HSET', KEYS[1], 'Quota', ARGV[12])
 end
-redis.call('EXPIRE', KEYS[1], ARGV[12])
+redis.call('EXPIRE', KEYS[1], ARGV[13])
 return 1`
 	result, err := common.RDB.Eval(context.Background(), script,
 		[]string{getUserCacheKey(user.Id), getUserAuthFenceKey(user.Id), getUserAuthVersionKey(user.Id)},
 		user.AuthVersion, user.Id, user.Group, user.Email, user.Status, user.Role,
-		user.Username, user.Setting, user.CacheSchema, includeQuotaArg, user.Quota, ttl,
+		user.Username, user.Setting, strconv.FormatBool(user.WalletFrozen), user.CacheSchema, includeQuotaArg, user.Quota, ttl,
 	).Int()
 	if err != nil {
 		return err

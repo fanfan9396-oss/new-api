@@ -6632,6 +6632,7 @@
     "Wallet": "钱包",
     "Wallet First": "优先钱包",
     "Wallet Management": "钱包管理",
+    "Wallet operations are temporarily frozen while an administrator processes a refund. Model requests are unavailable until processing is complete.": "管理员正在处理退款，额度使用暂时冻结。处理完成前无法调用模型。",
     "Wallet management and personal preferences.": "钱包管理和个人偏好设置。",
     "Wallet Only": "仅用钱包",
     "Wallet pre-consume bypass threshold (USD)": "钱包免预扣门槛（美元）",

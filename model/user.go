@@ -85,6 +85,7 @@ type User struct {
 	DisplayName          string                     `json:"display_name" gorm:"index" validate:"max=20"`
 	Role                 int                        `json:"role" gorm:"type:int;default:1"`   // admin, common
 	Status               int                        `json:"status" gorm:"type:int;default:1"` // enabled, disabled
+	WalletFrozen         bool                       `json:"wallet_frozen" gorm:"type:boolean;default:false;column:wallet_frozen"`
 	Email                string                     `json:"email" gorm:"index" validate:"max=50"`
 	GitHubId             string                     `json:"github_id" gorm:"column:github_id;index"`
 	DiscordId            string                     `json:"discord_id" gorm:"column:discord_id;index"`
@@ -116,16 +117,17 @@ type User struct {
 
 func (user *User) ToBaseUser() *UserBase {
 	cache := &UserBase{
-		Id:          user.Id,
-		Group:       user.Group,
-		Quota:       user.Quota,
-		Status:      user.Status,
-		Role:        user.Role,
-		Username:    user.Username,
-		Setting:     user.Setting,
-		Email:       user.Email,
-		AuthVersion: user.AuthVersion,
-		CacheSchema: userCacheSchemaVersion,
+		Id:           user.Id,
+		Group:        user.Group,
+		Quota:        user.Quota,
+		Status:       user.Status,
+		WalletFrozen: user.WalletFrozen,
+		Role:         user.Role,
+		Username:     user.Username,
+		Setting:      user.Setting,
+		Email:        user.Email,
+		AuthVersion:  user.AuthVersion,
+		CacheSchema:  userCacheSchemaVersion,
 	}
 	return cache
 }
@@ -1392,6 +1394,31 @@ func DecreaseUserQuota(id int, quota int, db bool) (err error) {
 		return nil
 	}
 	return decreaseUserQuota(id, quota)
+}
+
+// SetWalletFrozen changes the server-owned wallet processing freeze state.
+// The auth cache is refreshed so token requests cannot use a stale unfrozen snapshot.
+func SetWalletFrozen(id int, frozen bool) error {
+	if id <= 0 {
+		return errors.New("invalid user id")
+	}
+	err := DB.Transaction(func(tx *gorm.DB) error {
+		if _, err := IncrementUserAuthVersionWithTx(tx, id); err != nil {
+			return err
+		}
+		result := tx.Model(&User{}).Where("id = ?", id).Update("wallet_frozen", frozen)
+		if result.Error != nil {
+			return result.Error
+		}
+		if result.RowsAffected == 0 {
+			return gorm.ErrRecordNotFound
+		}
+		return nil
+	})
+	if err != nil {
+		return err
+	}
+	return PublishUserAuthCache(id)
 }
 
 func decreaseUserQuota(id int, quota int) (err error) {

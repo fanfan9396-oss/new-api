@@ -230,6 +230,8 @@ export interface UserWalletData {
   username: string
   /** Current quota balance */
   quota: number
+  /** Wallet operations are temporarily frozen by an administrator. */
+  wallet_frozen?: boolean
   /** Total used quota */
   used_quota: number
   /** Total request count */

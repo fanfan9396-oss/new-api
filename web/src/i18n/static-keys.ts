@@ -646,6 +646,7 @@ export const STATIC_I18N_KEYS = [
   'Personal Center Area',
   'User personal functions',
   'Wallet Management',
+  'Wallet operations are temporarily frozen while an administrator processes a refund. Model requests are unavailable until processing is complete.',
   'Balance and top-up management',
   'Personal Settings',
   'Personal info settings',

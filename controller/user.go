@@ -499,6 +499,7 @@ func buildSelfUserData(user *model.User) map[string]any {
 		"has_password":      user.HasPassword,
 		"role":              user.Role,
 		"status":            user.Status,
+		"wallet_frozen":     user.WalletFrozen,
 		"email":             user.Email,
 		"github_id":         user.GitHubId,
 		"discord_id":        user.DiscordId,
@@ -1187,6 +1188,44 @@ func ManageUser(c *gin.Context) {
 		"data":    clearUser,
 	})
 	return
+}
+
+type WalletFreezeRequest struct {
+	UserId int  `json:"user_id" binding:"required"`
+	Frozen bool `json:"frozen"`
+}
+
+// SetUserWalletFrozen is an admin-only control used while manually processing
+// a refund. It keeps the user session readable but blocks model requests.
+func SetUserWalletFrozen(c *gin.Context) {
+	if c.GetInt("role") < common.RoleAdminUser {
+		c.AbortWithStatusJSON(http.StatusForbidden, gin.H{"success": false, "message": "管理员权限不足"})
+		return
+	}
+	var req WalletFreezeRequest
+	if err := c.ShouldBindJSON(&req); err != nil || req.UserId <= 0 {
+		common.ApiError(c, errors.New("invalid user id"))
+		return
+	}
+	target := &model.User{}
+	if err := model.DB.Unscoped().First(target, req.UserId).Error; err != nil {
+		common.ApiError(c, err)
+		return
+	}
+	if !canManageTargetRole(c.GetInt("role"), target.Role) {
+		common.ApiErrorI18n(c, i18n.MsgUserNoPermissionHigherLevel)
+		return
+	}
+	if err := model.SetWalletFrozen(req.UserId, req.Frozen); err != nil {
+		common.ApiError(c, err)
+		return
+	}
+	recordManageAuditFor(c, target.Id, "user.wallet_freeze", map[string]any{
+		"target_user_id": target.Id,
+		"username":       target.Username,
+		"frozen":         req.Frozen,
+	})
+	common.ApiSuccess(c, nil)
 }
 
 type topUpRequest struct {

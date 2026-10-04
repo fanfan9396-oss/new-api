@@ -93,6 +93,60 @@ func performManageUserRequest(t *testing.T, body string) *httptest.ResponseRecor
 	return recorder
 }
 
+func performWalletFreezeRequest(t *testing.T, role int, body string) *httptest.ResponseRecorder {
+	t.Helper()
+	gin.SetMode(gin.TestMode)
+	recorder := httptest.NewRecorder()
+	c, _ := gin.CreateTestContext(recorder)
+	c.Request = httptest.NewRequest(http.MethodPost, "/api/user/wallet/freeze", strings.NewReader(body))
+	c.Request.Header.Set("Content-Type", "application/json")
+	c.Set("id", 9999)
+	c.Set("role", role)
+	c.Set(common.RequestIdKey, "wallet-freeze-request")
+	SetUserWalletFrozen(c)
+	return recorder
+}
+
+func TestSetUserWalletFrozenRequiresAdminAndPublishesState(t *testing.T) {
+	db := setupManageUserTestDB(t)
+	user := model.User{
+		Username: "wallet-freeze-managed", Password: "password", Role: common.RoleCommonUser,
+		Status: common.UserStatusEnabled, Group: "default", AuthVersion: 1,
+	}
+	require.NoError(t, db.Create(&user).Error)
+
+	denied := performWalletFreezeRequest(t, common.RoleCommonUser, fmt.Sprintf(`{"user_id":%d,"frozen":true}`, user.Id))
+	assert.Equal(t, http.StatusForbidden, denied.Code)
+	assert.Contains(t, denied.Body.String(), `"success":false`)
+
+	allowed := performWalletFreezeRequest(t, common.RoleRootUser, fmt.Sprintf(`{"user_id":%d,"frozen":true}`, user.Id))
+	assert.Equal(t, http.StatusOK, allowed.Code)
+	var updated model.User
+	require.NoError(t, db.First(&updated, user.Id).Error)
+	assert.True(t, updated.WalletFrozen)
+
+	unfrozen := performWalletFreezeRequest(t, common.RoleRootUser, fmt.Sprintf(`{"user_id":%d,"frozen":false}`, user.Id))
+	assert.Equal(t, http.StatusOK, unfrozen.Code)
+	require.NoError(t, db.First(&updated, user.Id).Error)
+	assert.False(t, updated.WalletFrozen)
+}
+
+func TestSetUserWalletFrozenCannotTargetHigherRole(t *testing.T) {
+	db := setupManageUserTestDB(t)
+	target := model.User{
+		Username: "wallet-freeze-root", Password: "password", Role: common.RoleRootUser,
+		Status: common.UserStatusEnabled, Group: "default", AuthVersion: 1,
+	}
+	require.NoError(t, db.Create(&target).Error)
+
+	recorder := performWalletFreezeRequest(t, common.RoleAdminUser, fmt.Sprintf(`{"user_id":%d,"frozen":true}`, target.Id))
+	assert.Equal(t, http.StatusOK, recorder.Code)
+	assert.Contains(t, recorder.Body.String(), `"success":false`)
+	var unchanged model.User
+	require.NoError(t, db.First(&unchanged, target.Id).Error)
+	assert.False(t, unchanged.WalletFrozen)
+}
+
 func TestManageUserDisableAdvancesAuthVersionOnceAndRevokesSession(t *testing.T) {
 	db := setupManageUserTestDB(t)
 	now := time.Now().Unix()

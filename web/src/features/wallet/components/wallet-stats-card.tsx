@@ -77,26 +77,33 @@ export function WalletStatsCard(props: WalletStatsCardProps) {
   ]
 
   return (
-    <div className='grid grid-cols-3 divide-x rounded-lg border'>
-      {stats.map((item) => (
-        <div key={item.label} className='min-w-0 px-2.5 py-2.5 sm:px-5 sm:py-4'>
-          <div className='flex items-center gap-1.5 sm:gap-2.5'>
-            <IconBadge tone={item.tone} size='stat'>
-              <item.icon />
-            </IconBadge>
-            <div className='text-muted-foreground truncate text-[11px] font-medium tracking-wider uppercase sm:text-xs'>
-              {item.label}
+    <div className='space-y-3'>
+      {props.user?.wallet_frozen && (
+        <div className='border-warning/40 bg-warning/10 text-warning-foreground rounded-lg border px-3 py-2 text-sm'>
+          {t('Wallet operations are temporarily frozen while an administrator processes a refund. Model requests are unavailable until processing is complete.')}
+        </div>
+      )}
+      <div className='grid grid-cols-3 divide-x rounded-lg border'>
+        {stats.map((item) => (
+          <div key={item.label} className='min-w-0 px-2.5 py-2.5 sm:px-5 sm:py-4'>
+            <div className='flex items-center gap-1.5 sm:gap-2.5'>
+              <IconBadge tone={item.tone} size='stat'>
+                <item.icon />
+              </IconBadge>
+              <div className='text-muted-foreground truncate text-[11px] font-medium tracking-wider uppercase sm:text-xs'>
+                {item.label}
+              </div>
+            </div>
+
+            <div className='text-foreground mt-1.5 font-mono text-sm font-bold tracking-tight break-all tabular-nums sm:mt-2.5 sm:text-2xl'>
+              {item.value}
+            </div>
+            <div className='text-muted-foreground/60 mt-1 hidden text-xs md:block'>
+              {item.description}
             </div>
           </div>
-
-          <div className='text-foreground mt-1.5 font-mono text-sm font-bold tracking-tight break-all tabular-nums sm:mt-2.5 sm:text-2xl'>
-            {item.value}
-          </div>
-          <div className='text-muted-foreground/60 mt-1 hidden text-xs md:block'>
-            {item.description}
-          </div>
-        </div>
-      ))}
+        ))}
+      </div>
     </div>
   )
 }

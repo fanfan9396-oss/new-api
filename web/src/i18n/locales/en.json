@@ -6632,6 +6632,7 @@
     "Wallet": "Wallet",
     "Wallet First": "Wallet First",
     "Wallet Management": "Wallet Management",
+    "Wallet operations are temporarily frozen while an administrator processes a refund. Model requests are unavailable until processing is complete.": "Wallet operations are temporarily frozen while an administrator processes a refund. Model requests are unavailable until processing is complete.",
     "Wallet management and personal preferences.": "Wallet management and personal preferences.",
     "Wallet Only": "Wallet Only",
     "Wallet pre-consume bypass threshold (USD)": "Wallet pre-consume bypass threshold (USD)",
