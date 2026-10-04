@@ -32,6 +32,7 @@ import type {
   AffiliateCodeResponse,
   AffiliateTransferResponse,
   BillingHistoryResponse,
+  WalletRefundRecord,
   CompleteOrderRequest,
   CreemPaymentRequest,
   CreemPaymentResponse,
@@ -244,5 +245,32 @@ export async function completeOrder(
   request: CompleteOrderRequest
 ): Promise<ApiResponse> {
   const res = await api.post('/api/user/topup/complete', request)
+  return res.data
+}
+
+export async function startWalletRefund(request: {
+  user_id: number
+  trade_no: string
+  reason: string
+}): Promise<ApiResponse<WalletRefundRecord>> {
+  const res = await api.post('/api/user/wallet/refunds/start', request)
+  return res.data
+}
+
+export async function completeWalletRefund(request: {
+  refund_id: number
+  deduct_quota: number
+  reason: string
+  proof_ref: string
+}): Promise<ApiResponse<WalletRefundRecord>> {
+  const res = await api.post('/api/user/wallet/refunds/complete', request)
+  return res.data
+}
+
+export async function cancelWalletRefund(request: {
+  refund_id: number
+  reason: string
+}): Promise<ApiResponse> {
+  const res = await api.post('/api/user/wallet/refunds/cancel', request)
   return res.data
 }

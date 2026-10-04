@@ -289,3 +289,16 @@ export interface BillingHistoryResponse {
 export interface CompleteOrderRequest {
   trade_no: string
 }
+
+export interface WalletRefundRecord {
+  id: number
+  user_id: number
+  trade_no: string
+  status: 'reviewing' | 'completed' | 'cancelled'
+  reason: string
+  proof_ref: string
+  deduct_quota: number
+  operator_id: number
+  created_at: number
+  completed_at: number
+}

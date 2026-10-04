@@ -19,6 +19,7 @@ For commercial licensing, please contact support@quantumnous.com
 import { Search, Copy, Check, ChevronLeft, ChevronRight } from 'lucide-react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { toast } from 'sonner'
 
 import { Dialog } from '@/components/dialog'
 import { StatusBadge } from '@/components/status-badge'
@@ -44,11 +45,15 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { Skeleton } from '@/components/ui/skeleton'
+import { Textarea } from '@/components/ui/textarea'
 import { useCopyToClipboard } from '@/hooks/use-copy-to-clipboard'
+import { handleServerError } from '@/lib/handle-server-error'
 import { formatCurrencyFromUSD } from '@/lib/currency'
 import { formatNumber } from '@/lib/format'
 
 import { useBillingHistory } from '../../hooks/use-billing-history'
+import type { TopupRecord } from '../../types'
+import { cancelWalletRefund, completeWalletRefund, startWalletRefund, isApiSuccess } from '../../api'
 import {
   getStatusConfig,
   getPaymentMethodName,
@@ -83,6 +88,12 @@ export function BillingHistoryDialog({
   } = useBillingHistory({ enabled: open, onDataRefresh })
 
   const [confirmTradeNo, setConfirmTradeNo] = useState<string | null>(null)
+  const [refundRecord, setRefundRecord] = useState<TopupRecord | null>(null)
+  const [refundId, setRefundId] = useState<number | null>(null)
+  const [refundReason, setRefundReason] = useState('')
+  const [refundProof, setRefundProof] = useState('')
+  const [deductQuota, setDeductQuota] = useState('')
+  const [refundLoading, setRefundLoading] = useState(false)
   const { copyToClipboard, copiedText } = useCopyToClipboard({ notify: false })
 
   const totalPages = Math.ceil(total / pageSize)
@@ -94,6 +105,56 @@ export function BillingHistoryDialog({
         setConfirmTradeNo(null)
       }
     }
+  }
+
+  const closeRefund = () => {
+    setRefundRecord(null)
+    setRefundId(null)
+    setRefundReason('')
+    setRefundProof('')
+    setDeductQuota('')
+  }
+
+  const handleStartRefund = async () => {
+    if (!refundRecord || !refundReason.trim()) return
+    setRefundLoading(true)
+    try {
+      const response = await startWalletRefund({ user_id: refundRecord.user_id, trade_no: refundRecord.trade_no, reason: refundReason.trim() })
+      if (!isApiSuccess(response) || !response.data) throw response
+      setRefundId(response.data.id)
+      toast.success(t('Refund processing started'))
+    } catch (error) {
+      handleServerError(error, t('Failed to start refund processing'))
+    } finally { setRefundLoading(false) }
+  }
+
+  const handleCompleteRefund = async () => {
+    const quota = Number.parseInt(deductQuota, 10)
+    if (!refundId || !refundReason.trim() || !refundProof.trim() || !Number.isFinite(quota) || quota <= 0) return
+    setRefundLoading(true)
+    try {
+      const response = await completeWalletRefund({ refund_id: refundId, deduct_quota: quota, reason: refundReason.trim(), proof_ref: refundProof.trim() })
+      if (!isApiSuccess(response)) throw response
+      toast.success(t('Refund processing completed'))
+      closeRefund()
+      await onDataRefresh?.()
+    } catch (error) {
+      handleServerError(error, t('Failed to complete refund processing'))
+    } finally { setRefundLoading(false) }
+  }
+
+  const handleCancelRefund = async () => {
+    if (!refundId || !refundReason.trim()) return
+    setRefundLoading(true)
+    try {
+      const response = await cancelWalletRefund({ refund_id: refundId, reason: refundReason.trim() })
+      if (!isApiSuccess(response)) throw response
+      toast.success(t('Refund processing cancelled'))
+      closeRefund()
+      await onDataRefresh?.()
+    } catch (error) {
+      handleServerError(error, t('Failed to cancel refund processing'))
+    } finally { setRefundLoading(false) }
   }
 
   return (
@@ -268,6 +329,13 @@ export function BillingHistoryDialog({
                       </div>
 
                       {/* Admin Actions */}
+                      {isAdmin && record.status === 'success' && (
+                        <div className='mt-4 flex justify-end'>
+                          <Button size='sm' variant='outline' onClick={() => setRefundRecord(record)}>
+                            {t('Refund processing')}
+                          </Button>
+                        </div>
+                      )}
                       {isAdmin && record.status === 'pending' && (
                         <div className='mt-4 flex justify-end'>
                           <Button
@@ -321,6 +389,39 @@ export function BillingHistoryDialog({
               </div>
             </div>
           )}
+        </div>
+      </Dialog>
+
+      <Dialog
+        open={!!refundRecord}
+        onOpenChange={(value) => !value && !refundLoading && closeRefund()}
+        title={t('Refund processing')}
+        description={t('Offline refund only. ZPAY is not called.')}
+        contentHeight='auto'
+        bodyClassName='space-y-4'
+      >
+        <div className='space-y-3'>
+          <div className='text-muted-foreground text-sm'>{refundRecord?.trade_no}</div>
+          <div className='space-y-2'>
+            <Label>{refundId ? t('Manual deduction reason') : t('Review reason')}</Label>
+            <Textarea value={refundReason} onChange={(event) => setRefundReason(event.target.value)} disabled={refundLoading} />
+          </div>
+          {refundId && (
+            <>
+              <div className='space-y-2'>
+                <Label>{t('Deduct quota')}</Label>
+                <Input type='number' min='1' step='1' value={deductQuota} onChange={(event) => setDeductQuota(event.target.value)} disabled={refundLoading} />
+              </div>
+              <div className='space-y-2'>
+                <Label>{t('Offline payment proof reference')}</Label>
+                <Input value={refundProof} onChange={(event) => setRefundProof(event.target.value)} disabled={refundLoading} />
+              </div>
+            </>
+          )}
+        </div>
+        <div className='flex flex-wrap justify-end gap-2'>
+          <Button variant='outline' onClick={refundId ? handleCancelRefund : closeRefund} disabled={refundLoading}>{t(refundId ? 'Cancel processing' : 'Cancel')}</Button>
+          <Button onClick={refundId ? handleCompleteRefund : handleStartRefund} disabled={refundLoading || !refundReason.trim()}>{refundLoading ? t('Processing...') : t(refundId ? 'Complete refund processing' : 'Start refund processing')}</Button>
         </div>
       </Dialog>
 
