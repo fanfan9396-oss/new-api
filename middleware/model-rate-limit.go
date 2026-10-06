@@ -174,6 +174,14 @@ func modelRequestSucceeded(c *gin.Context) bool {
 // ModelRequestRateLimit 模型请求限流中间件
 func ModelRequestRateLimit() func(c *gin.Context) {
 	return func(c *gin.Context) {
+		releaseConcurrency, allowed := modelConcurrencyAdmission(c)
+		if !allowed {
+			c.Header("Retry-After", "1")
+			c.AbortWithStatus(http.StatusTooManyRequests)
+			return
+		}
+		defer releaseConcurrency()
+
 		// 在每个请求时检查是否启用限流
 		if !setting.ModelRequestRateLimitEnabled {
 			c.Next()

@@ -149,6 +149,8 @@ func InitOptionMap() {
 	common.OptionMap["ModelRequestRateLimitDurationMinutes"] = strconv.Itoa(setting.ModelRequestRateLimitDurationMinutes)
 	common.OptionMap["ModelRequestRateLimitSuccessCount"] = strconv.Itoa(setting.ModelRequestRateLimitSuccessCount)
 	common.OptionMap["ModelRequestRateLimitGroup"] = setting.ModelRequestRateLimitGroup2JSONString()
+	common.OptionMap["ModelRequestConcurrencyPerUser"] = strconv.Itoa(setting.ModelRequestConcurrencyPerUser)
+	common.OptionMap["ModelRequestConcurrencyGlobal"] = strconv.Itoa(setting.ModelRequestConcurrencyGlobal)
 	common.OptionMap["ModelRatio"] = ratio_setting.ModelRatio2JSONString()
 	common.OptionMap["ModelPrice"] = ratio_setting.ModelPrice2JSONString()
 	common.OptionMap["CacheRatio"] = ratio_setting.CacheRatio2JSONString()
@@ -239,6 +241,12 @@ func validateOptionValue(key string, value string) error {
 	}
 	if key == "MaxTokenAutoGroups" {
 		return setting.ValidateMaxTokenAutoGroups(value)
+	}
+	if key == "ModelRequestConcurrencyPerUser" {
+		return setting.ValidateModelRequestConcurrencyPerUser(value)
+	}
+	if key == "ModelRequestConcurrencyGlobal" {
+		return setting.ValidateModelRequestConcurrencyGlobal(value)
 	}
 	return nil
 }
@@ -618,6 +626,10 @@ func updateOptionMap(key string, value string) (err error) {
 		setting.ModelRequestRateLimitDurationMinutes, _ = strconv.Atoi(value)
 	case "ModelRequestRateLimitSuccessCount":
 		setting.ModelRequestRateLimitSuccessCount, _ = strconv.Atoi(value)
+	case "ModelRequestConcurrencyPerUser":
+		setting.ModelRequestConcurrencyPerUser, _ = strconv.Atoi(value)
+	case "ModelRequestConcurrencyGlobal":
+		setting.ModelRequestConcurrencyGlobal, _ = strconv.Atoi(value)
 	case "ModelRequestRateLimitGroup":
 		err = setting.UpdateModelRequestRateLimitGroupByJSONString(value)
 	case "RetryTimes":

@@ -3,6 +3,7 @@ package setting
 import (
 	"fmt"
 	"math"
+	"strconv"
 	"sync"
 
 	"github.com/QuantumNous/new-api/common"
@@ -24,6 +25,27 @@ var ModelRequestRateLimitCount = 0
 var ModelRequestRateLimitSuccessCount = 1000
 var ModelRequestRateLimitGroup = map[string][2]int{}
 var ModelRequestRateLimitMutex sync.RWMutex
+
+// ModelRequestConcurrencyPerUser and ModelRequestConcurrencyGlobal bound
+// in-flight model requests after authentication and before distribution.
+var ModelRequestConcurrencyPerUser = 5
+var ModelRequestConcurrencyGlobal = 32
+
+func ValidateModelRequestConcurrencyPerUser(value string) error {
+	return validatePositiveConcurrency(value, "per-user model concurrency")
+}
+
+func ValidateModelRequestConcurrencyGlobal(value string) error {
+	return validatePositiveConcurrency(value, "global model concurrency")
+}
+
+func validatePositiveConcurrency(value, name string) error {
+	parsed, err := strconv.Atoi(value)
+	if err != nil || parsed < 1 || parsed > 100000 {
+		return fmt.Errorf("%s must be between 1 and 100000", name)
+	}
+	return nil
+}
 
 func ModelRequestRateLimitGroup2JSONString() string {
 	ModelRequestRateLimitMutex.RLock()

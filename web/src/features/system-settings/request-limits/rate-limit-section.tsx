@@ -72,6 +72,8 @@ const createRateLimitSchema = (t: (key: string) => string) =>
     ModelRequestRateLimitDurationMinutes: z.number().min(0),
     ModelRequestRateLimitCount: z.number().min(0).max(100000000),
     ModelRequestRateLimitSuccessCount: z.number().min(1).max(100000000),
+    ModelRequestConcurrencyPerUser: z.number().int().min(1).max(100000),
+    ModelRequestConcurrencyGlobal: z.number().int().min(1).max(100000),
     ModelRequestRateLimitGroup: z
       .string()
       .optional()
@@ -234,6 +236,51 @@ export function RateLimitSection({ defaultValues }: RateLimitSectionProps) {
                   <FormDescription>
                     {t('Only successful requests')}
                   </FormDescription>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          </div>
+
+          <div className='grid gap-4 md:grid-cols-2'>
+            <FormField
+              control={form.control}
+              name='ModelRequestConcurrencyPerUser'
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>{t('Max concurrent requests per user')}</FormLabel>
+                  <FormControl>
+                    <Input
+                      type='number'
+                      min={1}
+                      max={100000}
+                      step={1}
+                      {...field}
+                      onChange={(e) => field.onChange(parseInt(e.target.value) || 1)}
+                    />
+                  </FormControl>
+                  <FormDescription>{t('In-flight model requests admitted for each user')}</FormDescription>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name='ModelRequestConcurrencyGlobal'
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>{t('Max global concurrent requests')}</FormLabel>
+                  <FormControl>
+                    <Input
+                      type='number'
+                      min={1}
+                      max={100000}
+                      step={1}
+                      {...field}
+                      onChange={(e) => field.onChange(parseInt(e.target.value) || 1)}
+                    />
+                  </FormControl>
+                  <FormDescription>{t('In-flight model requests across the provider pool')}</FormDescription>
                   <FormMessage />
                 </FormItem>
               )}
