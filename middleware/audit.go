@@ -252,6 +252,9 @@ func TokenOperationAudit() gin.HandlerFunc {
 			entry.Success = entry.Status < 400 && common.GetContextKeyBool(c, constant.ContextKeyTokenAuditSucceeded)
 		}
 		model.RecordAuditLog(c, entry)
+		if entry.Success && (action == "token.create" || action == "token.update" || action == "token.status_update" || action == "token.delete" || action == "token.key_view" || action == "token.key_view_batch") {
+			RecordTokenChurnSignal(c, action)
+		}
 	}
 }
 

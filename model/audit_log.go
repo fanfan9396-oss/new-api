@@ -21,6 +21,41 @@ const (
 	AuditCategoryAccessToken = "access_token"
 )
 
+// RecordAbuseSignal stores a shadow-mode behavior signal in the existing
+// security audit stream. It deliberately records metadata only; it never
+// changes wallet, token, provider, or account state.
+func RecordAbuseSignal(c *gin.Context, userID, tokenID int, kind string, fields AuditFields) {
+	if kind == "" {
+		return
+	}
+	if fields == nil {
+		fields = AuditFields{}
+	}
+	redactIP := c.GetBool("abuse_redact_ip")
+	c.Set("abuse_redact_ip", true)
+	defer c.Set("abuse_redact_ip", redactIP)
+	actorRole := c.GetInt("role")
+	switch actorRole {
+	case common.RoleCommonUser, common.RoleAdminUser, common.RoleRootUser:
+	default:
+		actorRole = common.RoleCommonUser
+	}
+	entry := AuditLog{
+		UserId:    userID,
+		ActorRole: actorRole,
+		Category:  AuditCategorySecurity,
+		Action:    "abuse." + kind,
+		TokenRef:  AccessTokenFingerprint(c.GetString("token_key")),
+		Status:    c.Writer.Status(),
+		Success:   false,
+		Other:     AuditOther{RootInfo: fields},
+	}
+	if tokenID > 0 {
+		entry.Other.RootInfo["token_id"] = tokenID
+	}
+	RecordAuditLog(c, entry)
+}
+
 // AuditLog is retained independently of usage logs and their cleanup/TTL policy.
 // TokenRef identifies a PAT generation without storing its bearer credential.
 type AuditLog struct {
@@ -77,6 +112,12 @@ func RecordAuditLog(c *gin.Context, entry AuditLog) {
 		ctx = c.Request.Context()
 		entry.RequestId = c.GetString(common.RequestIdKey)
 		entry.Ip = c.ClientIP()
+		if c.GetBool("abuse_redact_ip") {
+			entry.Ip = AccessTokenFingerprint(entry.Ip)
+			if len(entry.Ip) > 16 {
+				entry.Ip = entry.Ip[:16]
+			}
+		}
 		entry.UserAgent = c.Request.UserAgent()
 		entry.Method = c.Request.Method
 		entry.Route = c.FullPath()
