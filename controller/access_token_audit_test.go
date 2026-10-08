@@ -214,9 +214,12 @@ func TestAuditIsolationVisibilityAndFailureContracts(t *testing.T) {
 	response = auditRequest(router, "GET", "/api/audit?category=security", pat)
 	assert.Contains(t, response.Body.String(), "admin_info")
 	assert.NotContains(t, response.Body.String(), "root-only")
+	filteredAbuse := auditRequest(router, "GET", "/api/audit?category=security&action=abuse.multi_ip", pat)
+	assert.Contains(t, filteredAbuse.Body.String(), `"total":0`)
 	for _, query := range []string{"success=bad", "category=bad", "token_ref=secret", "start_timestamp=-1", "start_timestamp=2&end_timestamp=1", "p=-1", "page_size=-1"} {
 		assert.Contains(t, auditRequest(router, "GET", "/api/audit/self?"+query, pat).Body.String(), `"success":false`)
 	}
+	assert.Contains(t, auditRequest(router, "GET", "/api/audit/self?action="+strings.Repeat("a", 129), pat).Body.String(), `"success":false`)
 	require.NoError(t, model.LOG_DB.Callback().Query().Before("gorm:query").Register("audit:fail", func(tx *gorm.DB) {
 		if tx.Statement.Table == "audit_logs" {
 			tx.AddError(errors.New("audit store unavailable"))

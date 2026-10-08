@@ -85,6 +85,7 @@ type AuditLogFilter struct {
 	UserId          int
 	Username        string
 	Category        string
+	Action          string
 	TokenRef        string
 	ExcludeTokenRef string
 	RequestId       string
@@ -199,6 +200,9 @@ func GetAuditLogs(filter AuditLogFilter, start, limit, viewerRole int) ([]*Audit
 	if filter.Category != "" {
 		query = query.Where("category = ?", filter.Category)
 	}
+	if filter.Action != "" {
+		query = query.Where("action = ?", filter.Action)
+	}
 	if filter.TokenRef != "" {
 		query = query.Where("token_ref = ?", filter.TokenRef)
 	}
@@ -307,4 +311,16 @@ func ValidTokenFingerprint(value string) bool {
 		return false
 	}
 	return strings.Trim(value, "0123456789abcdef") == ""
+}
+
+// ValidAuditAction keeps action filtering exact and bounded. Abuse review uses
+// the existing audit store instead of introducing a second event owner.
+func ValidAuditAction(action string) bool {
+	if action == "" {
+		return true
+	}
+	if len(action) > 128 || strings.ContainsAny(action, "%\x00") {
+		return false
+	}
+	return true
 }
