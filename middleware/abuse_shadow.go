@@ -17,9 +17,10 @@ import (
 const (
 	abuseShadowWindow       = 10 * time.Minute
 	abuseSignalCooldown     = time.Minute
-	abuseLongRequestLimit   = 30 * time.Second
 	abuseFailureSignalLimit = 3
 )
+
+var abuseLongRequestLimit = 30 * time.Second
 
 // AbuseShadowMiddleware records behavior signals after relay requests finish.
 // It is intentionally shadow-only: signals are audit records and do not block
