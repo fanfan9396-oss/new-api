@@ -15,6 +15,14 @@ type turnstileCheckResponse struct {
 func TurnstileCheck() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		if common.TurnstileCheckEnabled {
+			if !common.TurnstileConfigured() {
+				c.JSON(http.StatusOK, gin.H{
+					"success": false,
+					"message": "Turnstile 配置不完整，请联系管理员！",
+				})
+				c.Abort()
+				return
+			}
 			response := c.Query("turnstile")
 			if response == "" {
 				c.JSON(http.StatusOK, gin.H{
