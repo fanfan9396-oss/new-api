@@ -407,7 +407,10 @@ afterEach(() => {
   vi.restoreAllMocks()
   vi.unstubAllGlobals()
 })
-function renderViewer(scope: 'all' | 'self' = 'self') {
+function renderViewer(
+  scope: 'all' | 'self' = 'self',
+  accessOnly = true
+) {
   const client = new QueryClient({
     defaultOptions: { queries: { retry: false } },
   })
@@ -415,7 +418,7 @@ function renderViewer(scope: 'all' | 'self' = 'self') {
     <QueryClientProvider client={client}>
       <AuditLogViewer
         scope={scope}
-        accessOnly
+        accessOnly={accessOnly}
         currentTokenRef={'a'.repeat(64)}
       />
     </QueryClientProvider>
@@ -545,7 +548,7 @@ it('administrator scope uses the admin endpoint and exposes the username filter'
   const get = vi.spyOn(api, 'get').mockResolvedValue({
     data: { success: true, data: { items: [], total: 0 } },
   })
-  renderViewer('all')
+  renderViewer('all', false)
   await userEvent.click(screen.getByRole('button', { name: 'Expand' }))
   fireEvent.change(screen.getByLabelText('Username'), {
     target: { value: 'alice' },
@@ -553,6 +556,22 @@ it('administrator scope uses the admin endpoint and exposes the username filter'
   await waitFor(() =>
     expect(get).toHaveBeenLastCalledWith('/api/audit', {
       params: expect.objectContaining({ username: 'alice' }),
+    })
+  )
+})
+
+it('filters shadow abuse events by their exact action', async () => {
+  const get = vi.spyOn(api, 'get').mockResolvedValue({
+    data: { success: true, data: { items: [], total: 0 } },
+  })
+  renderViewer('all', false)
+  await userEvent.click(screen.getByRole('button', { name: 'Expand' }))
+  fireEvent.change(screen.getByPlaceholderText('Action'), {
+    target: { value: 'abuse.provider_error' },
+  })
+  await waitFor(() =>
+    expect(get).toHaveBeenLastCalledWith('/api/audit', {
+      params: expect.objectContaining({ action: 'abuse.provider_error' }),
     })
   )
 })

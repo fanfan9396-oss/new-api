@@ -147,6 +147,16 @@ export function AuditLogFilterBar(props: {
           <>
             <LogsFilterField>
               <LogsFilterInput
+                aria-label={t('Action')}
+                placeholder={t('Action')}
+                value={props.filters.action ?? ''}
+                onChange={(event) =>
+                  props.onChange({ action: event.target.value || undefined })
+                }
+              />
+            </LogsFilterField>
+            <LogsFilterField>
+              <LogsFilterInput
                 aria-label={t('Token identifier')}
                 placeholder={t('Token identifier')}
                 value={props.filters.token_ref ?? ''}
@@ -184,6 +194,7 @@ export function AuditLogFilterBar(props: {
       </>
     ) : undefined
   const advancedCount = [
+    props.filters.action,
     props.filters.token_ref,
     props.filters.request_id,
     props.filters.username,
