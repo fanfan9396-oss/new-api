@@ -24,7 +24,7 @@ func TestAbuseShadowRecordsDistinctTokenSignalWithoutRawIP(t *testing.T) {
 	previousDB, previousLogDB := model.DB, model.LOG_DB
 	db, err := gorm.Open(sqlite.Open(":memory:"), &gorm.Config{})
 	require.NoError(t, err)
-	require.NoError(t, db.AutoMigrate(&model.AuditLog{}))
+	require.NoError(t, db.AutoMigrate(&model.AuditLog{}, &model.AbuseReview{}))
 	model.DB, model.LOG_DB = db, db
 	t.Cleanup(func() { model.DB, model.LOG_DB = previousDB, previousLogDB })
 	_, _ = useRateLimitMiniRedis(t)
@@ -52,6 +52,11 @@ func TestAbuseShadowRecordsDistinctTokenSignalWithoutRawIP(t *testing.T) {
 	var signals []model.AuditLog
 	require.NoError(t, db.Where("action = ?", "abuse.multi_token").Find(&signals).Error)
 	require.Len(t, signals, 1)
+	var reviews []model.AbuseReview
+	require.NoError(t, db.Where("action = ?", "abuse.multi_token").Find(&reviews).Error)
+	require.Len(t, reviews, 1)
+	assert.Equal(t, model.AbuseReviewStatusPending, reviews[0].Status)
+	assert.Equal(t, "observe", model.AbuseDisposition(reviews[0].RiskScore))
 	assert.Len(t, signals[0].Ip, 16)
 	assert.NotEqual(t, "192.0.2.10", signals[0].Ip)
 	assert.NotEmpty(t, signals[0].TokenRef)
@@ -62,7 +67,7 @@ func TestRecordTokenChurnSignalUsesShadowAudit(t *testing.T) {
 	previousDB, previousLogDB := model.DB, model.LOG_DB
 	db, err := gorm.Open(sqlite.Open(":memory:"), &gorm.Config{})
 	require.NoError(t, err)
-	require.NoError(t, db.AutoMigrate(&model.AuditLog{}))
+	require.NoError(t, db.AutoMigrate(&model.AuditLog{}, &model.AbuseReview{}))
 	model.DB, model.LOG_DB = db, db
 	t.Cleanup(func() { model.DB, model.LOG_DB = previousDB, previousLogDB })
 	_, _ = useRateLimitMiniRedis(t)
@@ -85,7 +90,7 @@ func TestAbuseShadowRecordsLongStreamRetryAndProviderFailures(t *testing.T) {
 	previousDB, previousLogDB := model.DB, model.LOG_DB
 	db, err := gorm.Open(sqlite.Open(":memory:"), &gorm.Config{})
 	require.NoError(t, err)
-	require.NoError(t, db.AutoMigrate(&model.AuditLog{}))
+	require.NoError(t, db.AutoMigrate(&model.AuditLog{}, &model.AbuseReview{}))
 	model.DB, model.LOG_DB = db, db
 	t.Cleanup(func() { model.DB, model.LOG_DB = previousDB, previousLogDB })
 	_, _ = useRateLimitMiniRedis(t)

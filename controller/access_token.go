@@ -390,3 +390,63 @@ func GetAuditLogs(c *gin.Context) {
 	page.SetTotal(int(total))
 	common.ApiSuccess(c, page)
 }
+
+func GetAbuseReviews(c *gin.Context) {
+	page := common.GetPageQuery(c)
+	if page.Page < 1 || page.PageSize < 1 || page.Page > 100000000 {
+		common.ApiErrorMsg(c, "Invalid abuse review pagination")
+		return
+	}
+	status := c.Query("status")
+	action := c.Query("action")
+	if (status != "" && !model.ValidAbuseReviewStatus(status)) || !model.ValidAuditAction(action) {
+		common.ApiErrorMsg(c, "Invalid abuse review status")
+		return
+	}
+	items, total, err := model.ListAbuseReviews(status, action, page.GetStartIdx(), page.GetPageSize())
+	if err != nil {
+		common.ApiError(c, err)
+		return
+	}
+	page.SetItems(items)
+	page.SetTotal(int(total))
+	common.ApiSuccess(c, page)
+}
+
+type AbuseReviewUpdateRequest struct {
+	Status string `json:"status"`
+	Note   string `json:"note"`
+}
+
+func UpdateAbuseReview(c *gin.Context) {
+	id, err := strconv.Atoi(c.Param("id"))
+	if err != nil || id <= 0 {
+		common.ApiErrorMsg(c, "Invalid abuse review id")
+		return
+	}
+	var request AbuseReviewUpdateRequest
+	if err := common.DecodeJson(c.Request.Body, &request); err != nil || !model.ValidAbuseReviewTransition(request.Status) {
+		common.ApiErrorMsg(c, "Invalid abuse review update")
+		return
+	}
+	review, err := model.GetAbuseReview(id)
+	if err != nil {
+		common.ApiError(c, err)
+		return
+	}
+	if review.Status != model.AbuseReviewStatusPending {
+		common.ApiErrorMsg(c, "Abuse review is already closed")
+		return
+	}
+	now := common.GetTimestamp()
+	review.Status = request.Status
+	review.ReviewerId = c.GetInt("id")
+	review.ReviewNote = request.Note
+	review.UpdatedAt = now
+	review.ResolvedAt = now
+	if err := model.UpdateAbuseReview(review); err != nil {
+		common.ApiError(c, err)
+		return
+	}
+	common.ApiSuccess(c, review)
+}

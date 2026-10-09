@@ -25,7 +25,7 @@ const (
 // security audit stream. It deliberately records metadata only; it never
 // changes wallet, token, provider, or account state.
 func RecordAbuseSignal(c *gin.Context, userID, tokenID int, kind string, fields AuditFields) {
-	if kind == "" {
+	if kind == "" || DB == nil {
 		return
 	}
 	if fields == nil {
@@ -41,6 +41,7 @@ func RecordAbuseSignal(c *gin.Context, userID, tokenID int, kind string, fields 
 		actorRole = common.RoleCommonUser
 	}
 	entry := AuditLog{
+		EventId:   common.NewRequestId(),
 		UserId:    userID,
 		ActorRole: actorRole,
 		Category:  AuditCategorySecurity,
@@ -54,6 +55,21 @@ func RecordAbuseSignal(c *gin.Context, userID, tokenID int, kind string, fields 
 		entry.Other.RootInfo["token_id"] = tokenID
 	}
 	RecordAuditLog(c, entry)
+	if evidence, err := common.Marshal(fields); err == nil && tokenID > 0 {
+		review := &AbuseReview{
+			EventId:      entry.EventId,
+			UserId:       userID,
+			TokenId:      tokenID,
+			Action:       entry.Action,
+			Status:       AbuseReviewStatusPending,
+			RiskScore:    AbuseAggregateScore(userID, tokenID, kind, fields),
+			ScoreVersion: AbuseReviewScoreVersion,
+			EvidenceJSON: string(evidence),
+		}
+		if err := CreateAbuseReview(review); err == nil {
+			common.NotifyAbuseSignal(entry.EventId, entry.Action, review.RiskScore, review.EvidenceJSON)
+		}
+	}
 }
 
 // AuditLog is retained independently of usage logs and their cleanup/TTL policy.
