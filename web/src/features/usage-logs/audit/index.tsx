@@ -32,12 +32,14 @@ import { ROLE } from '@/lib/roles'
 import { useAuthStore } from '@/stores/auth-store'
 
 import { AuditLogViewer } from './components/audit-log-viewer'
+import { AbuseReviewQueue } from './components/abuse-review-queue'
 
 export function AuditLogs() {
   const { t } = useTranslation()
   const user = useAuthStore((state) => state.auth.user)
   const queryClient = useQueryClient()
   const [scope, setScope] = useState<'all' | 'self'>('all')
+  const [view, setView] = useState<'audit' | 'abuse'>('audit')
   const [accessRevoked, setAccessRevoked] = useState(false)
   const canReadAll =
     !!user &&
@@ -92,17 +94,28 @@ export function AuditLogs() {
       <SectionPageLayout.Title>{t('Audit Logs')}</SectionPageLayout.Title>
       <SectionPageLayout.Actions>
         {canReadAll && !accessRevoked && (
-          <Tabs
-            value={scope}
-            onValueChange={(value) =>
-              setScope(value === 'all' ? 'all' : 'self')
-            }
-          >
-            <TabsList aria-label={t('View scope')}>
-              <TabsTrigger value='all'>{t('All')}</TabsTrigger>
-              <TabsTrigger value='self'>{t('Only Mine')}</TabsTrigger>
-            </TabsList>
-          </Tabs>
+          <div className='flex items-center gap-2'>
+            <Tabs
+              value={view}
+              onValueChange={(value) => setView(value === 'abuse' ? 'abuse' : 'audit')}
+            >
+              <TabsList aria-label={t('Audit view')}>
+                <TabsTrigger value='audit'>{t('Audit Logs')}</TabsTrigger>
+                <TabsTrigger value='abuse'>{t('Abuse Reviews')}</TabsTrigger>
+              </TabsList>
+            </Tabs>
+            {view === 'audit' && (
+              <Tabs
+                value={scope}
+                onValueChange={(value) => setScope(value === 'all' ? 'all' : 'self')}
+              >
+                <TabsList aria-label={t('View scope')}>
+                  <TabsTrigger value='all'>{t('All')}</TabsTrigger>
+                  <TabsTrigger value='self'>{t('Only Mine')}</TabsTrigger>
+                </TabsList>
+              </Tabs>
+            )}
+          </div>
         )}
       </SectionPageLayout.Actions>
       <SectionPageLayout.Content>
@@ -113,11 +126,15 @@ export function AuditLogs() {
             </p>
           )}
           <div className='min-h-0 flex-1'>
-            <AuditLogViewer
-              key={`${userId}:${effectiveScope}`}
-              scope={effectiveScope}
-              onAccessDenied={handleAccessDenied}
-            />
+            {view === 'abuse' && canReadAll && !accessRevoked ? (
+              <AbuseReviewQueue />
+            ) : (
+              <AuditLogViewer
+                key={`${userId}:${effectiveScope}`}
+                scope={effectiveScope}
+                onAccessDenied={handleAccessDenied}
+              />
+            )}
           </div>
         </div>
       </SectionPageLayout.Content>

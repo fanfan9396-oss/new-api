@@ -55,6 +55,26 @@ export interface AuditFilters {
   username?: string
   request_id?: string
 }
+
+export type AbuseReviewStatus = 'pending' | 'resolved' | 'false_positive'
+
+export interface AbuseReview {
+  id: number
+  event_id: string
+  user_id: number
+  token_id: number
+  action: string
+  status: AbuseReviewStatus
+  risk_score: number
+  disposition?: string
+  score_version: string
+  evidence_json: string
+  reviewer_id: number
+  review_note: string
+  created_at: number
+  updated_at: number
+  resolved_at: number
+}
 export async function getAuditLogs(
   scope: 'all' | 'self',
   params: AuditFilters
@@ -64,6 +84,36 @@ export async function getAuditLogs(
   >(scope === 'all' ? '/api/audit' : '/api/audit/self', { params })
   if (!response.data.success || !response.data.data) {
     throw createServerError(response.data, t('Failed to load audit records'))
+  }
+  return response.data.data
+}
+
+export async function getAbuseReviews(params: {
+  p: number
+  page_size: number
+  status?: AbuseReviewStatus
+  action?: string
+}): Promise<{ items: AbuseReview[]; total: number }> {
+  const response = await api.get<
+    ApiResponse<{ items: AbuseReview[]; total: number }>
+  >('/api/abuse_reviews', { params })
+  if (!response.data.success || !response.data.data) {
+    throw createServerError(response.data, t('Failed to load abuse reviews'))
+  }
+  return response.data.data
+}
+
+export async function updateAbuseReview(
+  id: number,
+  status: Exclude<AbuseReviewStatus, 'pending'>,
+  note: string
+): Promise<AbuseReview> {
+  const response = await api.patch<ApiResponse<AbuseReview>>(
+    `/api/abuse_reviews/${id}`,
+    { status, note }
+  )
+  if (!response.data.success || !response.data.data) {
+    throw createServerError(response.data, t('Failed to update abuse review'))
   }
   return response.data.data
 }
