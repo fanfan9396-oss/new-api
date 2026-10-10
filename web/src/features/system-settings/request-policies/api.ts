@@ -31,3 +31,11 @@ export async function savePolicyConfig(options: Record<string, string>) {
   )
   return requireServerSuccess(response.data).data
 }
+
+export async function getContentAuditModels(endpoint: string) {
+  const response = await api.post<Response<{ models: string[] }>>(
+    '/api/option/content_audit/models',
+    { endpoint }
+  )
+  return requireServerSuccess(response.data).data.models
+}

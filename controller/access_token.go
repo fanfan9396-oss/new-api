@@ -413,6 +413,18 @@ func GetAbuseReviews(c *gin.Context) {
 	common.ApiSuccess(c, page)
 }
 
+func GetAbuseReviewSummary(c *gin.Context) {
+	summary, err := model.GetAbuseReviewSummary()
+	if err != nil {
+		common.ApiError(c, err)
+		return
+	}
+	common.ApiSuccess(c, gin.H{
+		"reviews":       summary,
+		"content_audit": service.ContentAuditHealthSnapshot(),
+	})
+}
+
 type AbuseReviewUpdateRequest struct {
 	Status string `json:"status"`
 	Note   string `json:"note"`

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"maps"
 	"math"
+	"net/url"
 	"regexp"
 	"strconv"
 	"strings"
@@ -61,6 +62,14 @@ func requestPolicyDefaultOptions() map[string]string {
 	defaults["SensitiveWords"] = setting.SensitiveWordsToString()
 	defaults["AutomaticEnableChannelEnabled"] = strconv.FormatBool(common.AutomaticEnableChannelEnabled)
 	defaults["ChannelDisableThreshold"] = strconv.FormatFloat(common.ChannelDisableThreshold, 'f', -1, 64)
+	defaults["ContentAuditEnabled"] = "false"
+	defaults["ContentAuditEndpoint"] = ""
+	defaults["ContentAuditModel"] = ""
+	defaults["ContentAuditTimeoutMs"] = "2000"
+	defaults["ContentAuditSampleRate"] = "0.05"
+	defaults["ContentAuditPrompt"] = ""
+	defaults["ContentAuditFlaggedThreshold"] = "0.7"
+	defaults["ContentAuditReviewThreshold"] = "0.4"
 	return defaults
 }
 
@@ -69,7 +78,7 @@ func IsRequestPolicyOption(key string) bool {
 		return true
 	}
 	switch key {
-	case "CheckSensitiveEnabled", "CheckSensitiveOnPromptEnabled", "SensitiveWords", "AutomaticEnableChannelEnabled", "ChannelDisableThreshold", "monitor_setting.auto_test_channel_enabled", "monitor_setting.auto_test_channel_minutes", "monitor_setting.channel_test_concurrency", "monitor_setting.channel_test_mode", "RetryTimes", "AutomaticRetryStatusCodes", "AutomaticDisableChannelEnabled", "AutomaticDisableStatusCodes", "AutomaticDisableKeywords":
+	case "CheckSensitiveEnabled", "CheckSensitiveOnPromptEnabled", "SensitiveWords", "AutomaticEnableChannelEnabled", "ChannelDisableThreshold", "monitor_setting.auto_test_channel_enabled", "monitor_setting.auto_test_channel_minutes", "monitor_setting.channel_test_concurrency", "monitor_setting.channel_test_mode", "RetryTimes", "AutomaticRetryStatusCodes", "AutomaticDisableChannelEnabled", "AutomaticDisableStatusCodes", "AutomaticDisableKeywords", "ContentAuditEnabled", "ContentAuditEndpoint", "ContentAuditModel", "ContentAuditTimeoutMs", "ContentAuditSampleRate", "ContentAuditPrompt", "ContentAuditFlaggedThreshold", "ContentAuditReviewThreshold":
 		return true
 	}
 	return false
@@ -85,6 +94,16 @@ func CurrentRequestPolicy() *RequestPolicySnapshot {
 		return &RequestPolicySnapshot{Options: map[string]string{}}
 	}
 	return snapshot
+}
+
+// RequestPolicyOptionValue returns only explicitly persisted options. This lets
+// optional integrations keep environment-variable fallbacks without allowing
+// a default value to mask a server secret or deployment setting.
+func RequestPolicyOptionValue(key string) (string, bool) {
+	common.OptionMapRWMutex.RLock()
+	defer common.OptionMapRWMutex.RUnlock()
+	value, ok := common.OptionMap[key]
+	return value, ok
 }
 
 func BuildRequestPolicy(options map[string]string) (*RequestPolicySnapshot, error) {
@@ -146,6 +165,28 @@ func BuildRequestPolicy(options map[string]string) (*RequestPolicySnapshot, erro
 	for _, key := range []string{"CheckSensitiveEnabled", "CheckSensitiveOnPromptEnabled", "AutomaticEnableChannelEnabled", "monitor_setting.auto_test_channel_enabled"} {
 		if _, err := strconv.ParseBool(raw[key]); err != nil {
 			return nil, fmt.Errorf("invalid boolean: %s", key)
+		}
+	}
+	if _, err := strconv.ParseBool(raw["ContentAuditEnabled"]); err != nil {
+		return nil, fmt.Errorf("invalid boolean: ContentAuditEnabled")
+	}
+	if endpoint := strings.TrimSpace(raw["ContentAuditEndpoint"]); endpoint != "" {
+		parsed, err := url.ParseRequestURI(endpoint)
+		if err != nil || (parsed.Scheme != "http" && parsed.Scheme != "https") || parsed.Host == "" || len(endpoint) > 512 {
+			return nil, fmt.Errorf("invalid ContentAuditEndpoint")
+		}
+	}
+	if len(raw["ContentAuditModel"]) > 128 || len(raw["ContentAuditPrompt"]) > 20000 {
+		return nil, fmt.Errorf("content audit model or prompt is too long")
+	}
+	timeoutMs, err := strconv.Atoi(raw["ContentAuditTimeoutMs"])
+	if err != nil || timeoutMs < 100 || timeoutMs > 30000 {
+		return nil, fmt.Errorf("ContentAuditTimeoutMs must be between 100 and 30000")
+	}
+	for _, key := range []string{"ContentAuditSampleRate", "ContentAuditFlaggedThreshold", "ContentAuditReviewThreshold"} {
+		value, err := strconv.ParseFloat(raw[key], 64)
+		if err != nil || value < 0 || value > 1 || math.IsNaN(value) || math.IsInf(value, 0) {
+			return nil, fmt.Errorf("invalid numeric value: %s", key)
 		}
 	}
 	snapshot.CheckText = raw["CheckSensitiveEnabled"] == "true" && raw["CheckSensitiveOnPromptEnabled"] == "true"

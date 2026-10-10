@@ -40,7 +40,16 @@ export type HealthSettings = {
 export type FilteringSettings = Pick<
   SecuritySettings,
   'CheckSensitiveEnabled' | 'CheckSensitiveOnPromptEnabled' | 'SensitiveWords'
->
+> & {
+  ContentAuditEnabled: boolean
+  ContentAuditEndpoint: string
+  ContentAuditModel: string
+  ContentAuditTimeoutMs: string
+  ContentAuditSampleRate: string
+  ContentAuditPrompt: string
+  ContentAuditFlaggedThreshold: string
+  ContentAuditReviewThreshold: string
+}
 export type RequestPolicySettings = RetrySettings &
   HealthSettings &
   FilteringSettings &
@@ -69,4 +78,12 @@ export const defaultRequestPolicySettings: RequestPolicySettings = {
   CheckSensitiveEnabled: false,
   CheckSensitiveOnPromptEnabled: false,
   SensitiveWords: '',
+  ContentAuditEnabled: false,
+  ContentAuditEndpoint: '',
+  ContentAuditModel: '',
+  ContentAuditTimeoutMs: '2000',
+  ContentAuditSampleRate: '0.05',
+  ContentAuditPrompt: '',
+  ContentAuditFlaggedThreshold: '0.7',
+  ContentAuditReviewThreshold: '0.4',
 }

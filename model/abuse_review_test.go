@@ -23,6 +23,7 @@ func setupAbuseReviewModelTest(t *testing.T) *gorm.DB {
 }
 
 func TestAbuseReviewScoreAndDisposition(t *testing.T) {
+	assert.Equal(t, 1, AbuseSignalWeight("keyword_match"))
 	db := setupAbuseReviewModelTest(t)
 	now := common.GetTimestamp()
 	require.NoError(t, CreateAbuseReview(&AbuseReview{
@@ -64,4 +65,30 @@ func TestAbuseReviewRejectsInvalidInput(t *testing.T) {
 	assert.Error(t, UpdateAbuseReview(&AbuseReview{Id: 1, Status: "closed"}))
 	assert.False(t, ValidAbuseReviewTransition(AbuseReviewStatusPending))
 	assert.True(t, ValidAbuseReviewTransition(AbuseReviewStatusResolved))
+}
+
+func TestGetAbuseReviewSummaryCountsQueueAndSignals(t *testing.T) {
+	setupAbuseReviewModelTest(t)
+	now := common.GetTimestamp()
+	reviews := []*AbuseReview{
+		{EventId: "summary-pending", UserId: 1, TokenId: 1, Action: "abuse.content_audit", Status: AbuseReviewStatusPending, RiskScore: 3, CreatedAt: now},
+		{EventId: "summary-resolved", UserId: 1, TokenId: 1, Action: "abuse.keyword_match", Status: AbuseReviewStatusResolved, RiskScore: 6, CreatedAt: now},
+		{EventId: "summary-false-positive", UserId: 1, TokenId: 1, Action: "abuse.provider_error", Status: AbuseReviewStatusFalsePositive, RiskScore: 1, CreatedAt: now},
+		{EventId: "summary-old", UserId: 1, TokenId: 1, Action: "abuse.content_audit", Status: AbuseReviewStatusPending, RiskScore: 1, CreatedAt: now - 25*60*60},
+	}
+	for _, review := range reviews {
+		require.NoError(t, CreateAbuseReview(review))
+	}
+	summary, err := GetAbuseReviewSummary()
+	require.NoError(t, err)
+	assert.Equal(t, int64(4), summary.Total)
+	assert.Equal(t, int64(2), summary.Pending)
+	assert.Equal(t, int64(1), summary.Resolved)
+	assert.Equal(t, int64(1), summary.FalsePositive)
+	assert.Equal(t, int64(3), summary.Last24Hours)
+	assert.Equal(t, int64(2), summary.ReviewPriority)
+	assert.Equal(t, int64(1), summary.ManualPriority)
+	assert.Equal(t, int64(2), summary.ContentAudit)
+	assert.Equal(t, int64(1), summary.KeywordMatch)
+	assert.NotZero(t, summary.GeneratedAt)
 }

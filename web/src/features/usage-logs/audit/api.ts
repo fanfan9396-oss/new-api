@@ -75,6 +75,38 @@ export interface AbuseReview {
   updated_at: number
   resolved_at: number
 }
+
+export interface AbuseReviewSummary {
+  total: number
+  pending: number
+  resolved: number
+  false_positive: number
+  last_24_hours: number
+  review_priority: number
+  manual_priority: number
+  content_audit: number
+  keyword_match: number
+  generated_at: number
+}
+
+export interface ContentAuditHealth {
+  enabled: boolean
+  configured: boolean
+  model: string
+  timeout_ms: number
+  sample_rate: number
+  requests: number
+  flagged: number
+  errors: number
+  dropped: number
+  in_flight: number
+  last_error_at: number
+}
+
+export interface AbuseReviewSummaryResponse {
+  reviews: AbuseReviewSummary
+  content_audit: ContentAuditHealth
+}
 export async function getAuditLogs(
   scope: 'all' | 'self',
   params: AuditFilters
@@ -99,6 +131,16 @@ export async function getAbuseReviews(params: {
   >('/api/abuse_reviews', { params })
   if (!response.data.success || !response.data.data) {
     throw createServerError(response.data, t('Failed to load abuse reviews'))
+  }
+  return response.data.data
+}
+
+export async function getAbuseReviewSummary(): Promise<AbuseReviewSummaryResponse> {
+  const response = await api.get<ApiResponse<AbuseReviewSummaryResponse>>(
+    '/api/abuse_reviews/summary'
+  )
+  if (!response.data.success || !response.data.data) {
+    throw createServerError(response.data, t('Failed to load abuse review summary'))
   }
   return response.data.data
 }

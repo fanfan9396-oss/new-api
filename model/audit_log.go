@@ -66,9 +66,9 @@ func RecordAbuseSignal(c *gin.Context, userID, tokenID int, kind string, fields 
 			ScoreVersion: AbuseReviewScoreVersion,
 			EvidenceJSON: string(evidence),
 		}
-		if err := CreateAbuseReview(review); err == nil {
-			common.NotifyAbuseSignal(entry.EventId, entry.Action, review.RiskScore, review.EvidenceJSON)
-		}
+		// User-behavior signals stay in the operator review queue. Email is
+		// reserved for independent infrastructure and data-integrity alerts.
+		_ = CreateAbuseReview(review)
 	}
 }
 

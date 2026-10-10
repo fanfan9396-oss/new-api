@@ -29,6 +29,8 @@ var abuseSignalWeights = map[string]int{
 	"failure_burst":  2,
 	"long_request":   1,
 	"long_stream":    1,
+	"keyword_match":  1,
+	"content_audit":  2,
 }
 
 // AbuseReview is the operator-owned review queue for one shadow signal.
@@ -184,6 +186,61 @@ func ListAbuseReviews(status, action string, start, limit int) ([]*AbuseReview, 
 		item.Disposition = AbuseDisposition(item.RiskScore)
 	}
 	return items, total, nil
+}
+
+// AbuseReviewSummary is a read-only operator snapshot. It contains counts only;
+// no prompt, token, IP, or provider credential is included.
+type AbuseReviewSummary struct {
+	Total          int64 `json:"total"`
+	Pending        int64 `json:"pending"`
+	Resolved       int64 `json:"resolved"`
+	FalsePositive  int64 `json:"false_positive"`
+	Last24Hours    int64 `json:"last_24_hours"`
+	ReviewPriority int64 `json:"review_priority"`
+	ManualPriority int64 `json:"manual_priority"`
+	ContentAudit   int64 `json:"content_audit"`
+	KeywordMatch   int64 `json:"keyword_match"`
+	GeneratedAt    int64 `json:"generated_at"`
+}
+
+func GetAbuseReviewSummary() (AbuseReviewSummary, error) {
+	if DB == nil {
+		return AbuseReviewSummary{}, errors.New("abuse review database is unavailable")
+	}
+	var summary AbuseReviewSummary
+	count := func(destination *int64, query string, args ...any) error {
+		return DB.Model(&AbuseReview{}).Where(query, args...).Count(destination).Error
+	}
+	if err := DB.Model(&AbuseReview{}).Count(&summary.Total).Error; err != nil {
+		return AbuseReviewSummary{}, err
+	}
+	for status, destination := range map[string]*int64{
+		AbuseReviewStatusPending:       &summary.Pending,
+		AbuseReviewStatusResolved:      &summary.Resolved,
+		AbuseReviewStatusFalsePositive: &summary.FalsePositive,
+	} {
+		if err := count(destination, "status = ?", status); err != nil {
+			return AbuseReviewSummary{}, err
+		}
+	}
+	cutoff := common.GetTimestamp() - int64((24*time.Hour)/time.Second)
+	if err := count(&summary.Last24Hours, "created_at >= ?", cutoff); err != nil {
+		return AbuseReviewSummary{}, err
+	}
+	if err := count(&summary.ReviewPriority, "risk_score >= ?", AbuseReviewThresholdReview); err != nil {
+		return AbuseReviewSummary{}, err
+	}
+	if err := count(&summary.ManualPriority, "risk_score >= ?", AbuseReviewThresholdManual); err != nil {
+		return AbuseReviewSummary{}, err
+	}
+	if err := count(&summary.ContentAudit, "action = ?", "abuse.content_audit"); err != nil {
+		return AbuseReviewSummary{}, err
+	}
+	if err := count(&summary.KeywordMatch, "action = ?", "abuse.keyword_match"); err != nil {
+		return AbuseReviewSummary{}, err
+	}
+	summary.GeneratedAt = common.GetTimestamp()
+	return summary, nil
 }
 
 func GetAbuseReview(id int) (*AbuseReview, error) {

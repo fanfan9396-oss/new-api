@@ -8,6 +8,7 @@ import (
 
 	"github.com/QuantumNous/new-api/constant"
 	"github.com/QuantumNous/new-api/logger"
+	"github.com/QuantumNous/new-api/model"
 	relaycommon "github.com/QuantumNous/new-api/relay/common"
 	"github.com/QuantumNous/new-api/relay/helper"
 	"github.com/QuantumNous/new-api/relaykit/dto"
@@ -41,7 +42,15 @@ func PrepareRequestBilling(c *gin.Context, info *relaycommon.RelayInfo) *types.N
 	}
 
 	if needSensitiveCheck && meta != nil {
+		service.EnqueueContentAuditShadow(c, c.GetInt("id"), c.GetInt("token_id"), info.OriginModelName, meta.CombineText)
 		if contains, words := service.CheckSensitiveText(meta.CombineText); contains {
+			if userID, tokenID := c.GetInt("id"), c.GetInt("token_id"); userID > 0 && tokenID > 0 {
+				model.RecordAbuseSignal(c, userID, tokenID, "keyword_match", model.AuditFields{
+					"match_count":  len(words),
+					"input_length": len(meta.CombineText),
+					"source":       "configured_sensitive_words",
+				})
+			}
 			service.RequestPolicy(c).AddEvent(service.PolicyEvent{ErrorCode: string(types.ErrorCodeSensitiveWordsDetected), ErrorSource: "local", Decision: service.PolicyDecision{Action: "stop", Reason: "local_rejection", Source: "global"}, Health: "unchanged"})
 			message := fmt.Sprintf("user sensitive words detected: %s", strings.Join(words, ", "))
 			logger.LogWarn(c, message)

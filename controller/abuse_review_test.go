@@ -27,6 +27,7 @@ func TestAbuseReviewQueueRequiresAuditPermissionAndClosesOnce(t *testing.T) {
 
 	router := gin.New()
 	router.Use(middleware.RequestId(), middleware.AccessTokenAudit())
+	router.GET("/api/abuse_reviews/summary", middleware.AdminAuth(), middleware.RequirePermission(authz.AuditRead), GetAbuseReviewSummary)
 	router.GET("/api/abuse_reviews", middleware.AdminAuth(), middleware.RequirePermission(authz.AuditRead), GetAbuseReviews)
 	router.PATCH("/api/abuse_reviews/:id", middleware.AdminAuth(), middleware.RequirePermission(authz.AuditRead), UpdateAbuseReview)
 
@@ -38,6 +39,10 @@ func TestAbuseReviewQueueRequiresAuditPermissionAndClosesOnce(t *testing.T) {
 	assert.Equal(t, http.StatusOK, listed.Code, listed.Body.String())
 	assert.Contains(t, listed.Body.String(), `"event_id":"review-event-1"`)
 	assert.Contains(t, listed.Body.String(), `"disposition":"review"`)
+	summary := abuseReviewRequest(router, http.MethodGet, "/api/abuse_reviews/summary", pat, "")
+	assert.Equal(t, http.StatusOK, summary.Code, summary.Body.String())
+	assert.Contains(t, summary.Body.String(), `"content_audit":0`)
+	assert.Contains(t, summary.Body.String(), `"enabled":false`)
 
 	updated := abuseReviewRequest(router, http.MethodPatch, "/api/abuse_reviews/"+strconv.Itoa(review.Id), pat, `{"status":"resolved","note":"checked provider failure"}`)
 	assert.Equal(t, http.StatusOK, updated.Code, updated.Body.String())

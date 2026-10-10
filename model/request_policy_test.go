@@ -120,3 +120,32 @@ func TestRequestPolicyDatabaseMatrix(t *testing.T) {
 		})
 	}
 }
+
+func TestContentAuditPolicyOptionsValidateWithoutSecrets(t *testing.T) {
+	options := maps.Clone(requestPolicyDefaultOptions())
+	options["ContentAuditEnabled"] = "true"
+	options["ContentAuditEndpoint"] = "https://audit.example/v1/chat/completions"
+	options["ContentAuditModel"] = "audit-model"
+	options["ContentAuditTimeoutMs"] = "2500"
+	options["ContentAuditSampleRate"] = "0.1"
+	options["ContentAuditReviewThreshold"] = "0.4"
+	options["ContentAuditFlaggedThreshold"] = "0.7"
+	options["ContentAuditPrompt"] = "Keep ordinary defensive testing in review-only mode."
+	_, err := BuildRequestPolicy(options)
+	require.NoError(t, err)
+
+	for key, value := range map[string]string{
+		"ContentAuditEndpoint":         "ftp://audit.example/v1/chat/completions",
+		"ContentAuditTimeoutMs":        "50",
+		"ContentAuditSampleRate":       "1.5",
+		"ContentAuditReviewThreshold":  "-0.1",
+		"ContentAuditFlaggedThreshold": "not-a-number",
+	} {
+		invalid := maps.Clone(options)
+		invalid[key] = value
+		assert.Error(t, func() error {
+			_, err := BuildRequestPolicy(invalid)
+			return err
+		}())
+	}
+}

@@ -32,6 +32,14 @@ const POLICY_SECTIONS = [
           CheckSensitiveEnabled: settings.CheckSensitiveEnabled,
           CheckSensitiveOnPromptEnabled: settings.CheckSensitiveOnPromptEnabled,
           SensitiveWords: settings.SensitiveWords,
+          ContentAuditEnabled: settings.ContentAuditEnabled,
+          ContentAuditEndpoint: settings.ContentAuditEndpoint,
+          ContentAuditModel: settings.ContentAuditModel,
+          ContentAuditTimeoutMs: settings.ContentAuditTimeoutMs,
+          ContentAuditSampleRate: settings.ContentAuditSampleRate,
+          ContentAuditPrompt: settings.ContentAuditPrompt,
+          ContentAuditFlaggedThreshold: settings.ContentAuditFlaggedThreshold,
+          ContentAuditReviewThreshold: settings.ContentAuditReviewThreshold,
         }}
       />
     ),

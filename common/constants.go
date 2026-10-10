@@ -105,9 +105,6 @@ var SMTPForceAuthLogin = false
 var SMTPAccount = ""
 var SMTPFrom = ""
 var SMTPToken = ""
-var AbuseAlertEnabled = false
-var AbuseAlertRecipient = ""
-
 var GitHubClientId = ""
 var GitHubClientSecret = ""
 var LinuxDOClientId = ""
