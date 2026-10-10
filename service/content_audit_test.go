@@ -127,6 +127,20 @@ func TestFetchContentAuditModelsDiscoversAndDeduplicatesIDs(t *testing.T) {
 	require.Equal(t, []string{"audit-small", "audit-large"}, models)
 }
 
+func TestEvaluateContentAuditAppendsCompletionsPathForV1Endpoint(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		require.Equal(t, "/v1/chat/completions", r.URL.Path)
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"choices":[{"message":{"content":"{\"flagged\":false,\"category\":\"none\",\"confidence\":0,\"reason_code\":\"\",\"action\":\"allow\"}"}}]}`))
+	}))
+	defer server.Close()
+	result, err := EvaluateContentAudit(context.Background(), ContentAuditConfig{
+		Enabled: true, Endpoint: server.URL + "/v1", APIKey: "test-key", Model: "audit-model", Timeout: time.Second,
+	}, "hello")
+	require.NoError(t, err)
+	require.False(t, result.Flagged)
+}
+
 func TestContentAuditHealthReportsConfigurationWithoutSecrets(t *testing.T) {
 	t.Setenv("CONTENT_AUDIT_ENABLED", "true")
 	t.Setenv("CONTENT_AUDIT_ENDPOINT", "https://audit.example.invalid/v1/chat/completions")

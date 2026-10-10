@@ -177,6 +177,24 @@ func contentAuditModelsEndpoint(endpoint string) (string, error) {
 	return parsed.String(), nil
 }
 
+func contentAuditCompletionsEndpoint(endpoint string) (string, error) {
+	parsed, err := url.ParseRequestURI(strings.TrimSpace(endpoint))
+	if err != nil || (parsed.Scheme != "http" && parsed.Scheme != "https") || parsed.Host == "" {
+		return "", errors.New("content audit endpoint must be an http(s) URL")
+	}
+	path := strings.TrimRight(parsed.Path, "/")
+	if strings.HasSuffix(path, "/chat/completions") {
+		return parsed.String(), nil
+	}
+	if strings.HasSuffix(path, "/v1") {
+		parsed.Path = path + "/chat/completions"
+		parsed.RawQuery = ""
+		parsed.Fragment = ""
+		return parsed.String(), nil
+	}
+	return parsed.String(), nil
+}
+
 // FetchContentAuditModels discovers model IDs from an OpenAI-compatible
 // endpoint. The API key is read only from the server secret environment.
 func FetchContentAuditModels(ctx context.Context, endpoint string) ([]string, error) {
@@ -258,7 +276,11 @@ func EvaluateContentAudit(ctx context.Context, cfg ContentAuditConfig, input str
 	if err != nil {
 		return ContentAuditResult{}, err
 	}
-	request, err := http.NewRequestWithContext(ctx, http.MethodPost, cfg.Endpoint, strings.NewReader(string(encoded)))
+	completionsEndpoint, err := contentAuditCompletionsEndpoint(cfg.Endpoint)
+	if err != nil {
+		return ContentAuditResult{}, err
+	}
+	request, err := http.NewRequestWithContext(ctx, http.MethodPost, completionsEndpoint, strings.NewReader(string(encoded)))
 	if err != nil {
 		return ContentAuditResult{}, err
 	}
