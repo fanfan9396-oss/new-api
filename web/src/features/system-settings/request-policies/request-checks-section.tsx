@@ -302,6 +302,13 @@ function ContentAuditSection({ defaultValues }: RequestChecksSectionProps) {
               )}
             />
           </SettingsControlGroup>
+          <Alert>
+            <AlertDescription>
+              {form.watch('ContentAuditEnabled')
+                ? t('Shadow audit is enabled; requests continue normally and results are queued for review.')
+                : t('Shadow audit is disabled; no external audit request will be sent.')}
+            </AlertDescription>
+          </Alert>
 
           <div className='grid gap-4 md:grid-cols-2'>
             <FormField
@@ -324,8 +331,9 @@ function ContentAuditSection({ defaultValues }: RequestChecksSectionProps) {
                   <FormLabel>{t('Audit model')}</FormLabel>
                   <div className='flex gap-2'>
                     <FormControl><Input list='content-audit-models' placeholder='audit-model' {...field} /></FormControl>
-                    <Button type='button' variant='outline' size='icon' aria-label={t('Fetch models')} title={t('Fetch models')} disabled={isFetchingModels} onClick={() => void fetchModels()}>
+                    <Button type='button' variant='outline' size='sm' aria-label={t('Fetch models')} title={t('Fetch models')} disabled={isFetchingModels} onClick={() => void fetchModels()}>
                       <RefreshCw className={isFetchingModels ? 'animate-spin' : ''} />
+                      <span>{t('Fetch models')}</span>
                     </Button>
                   </div>
                   <datalist id='content-audit-models'>
