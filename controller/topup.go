@@ -1,6 +1,7 @@
 package controller
 
 import (
+	"maps"
 	"errors"
 	"fmt"
 	"net/http"
@@ -225,10 +226,10 @@ func getMaxTopUpAmount() int64 {
 func validateCreditedQuota(quota decimal.Decimal) (int, error) {
 	value, err := common.WalletQuotaFromDecimalStrict(quota)
 	if err != nil {
-		return 0, errors.New("充值额度超出系统可表示范围")
+		return 0, common.NewMessage("Top-up quota exceeds the range the system can represent")
 	}
 	if value <= 0 {
-		return 0, errors.New("充值额度必须大于 0")
+		return 0, common.NewMessage("Top-up quota must be greater than 0")
 	}
 	return value, nil
 }
@@ -240,9 +241,9 @@ func validateTopUpQuota(amount int64) (int, error) {
 	}
 	maxAmount := getMaxTopUpAmount()
 	if maxAmount > 0 && amount > maxAmount {
-		return 0, fmt.Errorf("单笔充值数量不能大于 %d", maxAmount)
+		return 0, common.NewMessage("Top-up amount cannot exceed {{max}}", map[string]any{"max": maxAmount})
 	}
-	return 0, errors.New("充值数量无效")
+	return 0, common.NewMessage("Invalid top-up amount")
 }
 
 func rejectInvalidCreditedQuota(c *gin.Context, userId int, quota decimal.Decimal) bool {
@@ -251,7 +252,7 @@ func rejectInvalidCreditedQuota(c *gin.Context, userId int, quota decimal.Decima
 		err = model.ValidateTopUpQuotaCapacity(userId, creditedQuota)
 	}
 	if err != nil {
-		c.JSON(http.StatusOK, gin.H{"message": "error", "data": err.Error()})
+		paymentError(c, err)
 		return true
 	}
 	return false
@@ -263,10 +264,20 @@ func rejectInvalidTopUpQuota(c *gin.Context, userId int, amount int64) bool {
 		err = model.ValidateTopUpQuotaCapacity(userId, creditedQuota)
 	}
 	if err != nil {
-		c.JSON(http.StatusOK, gin.H{"message": "error", "data": err.Error()})
+		paymentError(c, err)
 		return true
 	}
 	return false
+}
+
+// paymentError answers payment endpoints in the standard payment error shape.
+func paymentError(c *gin.Context, err error) {
+	body := gin.H{"message": "error", "data": err.Error()}
+	var message *common.Message
+	if errors.As(err, &message) {
+		maps.Copy(body, message.Fields())
+	}
+	c.JSON(http.StatusOK, body)
 }
 
 func RequestEpay(c *gin.Context) {
@@ -594,3 +605,9 @@ func AdminCompleteTopUp(c *gin.Context) {
 	}
 	common.ApiSuccess(c, nil)
 }
+
+
+
+
+
+

@@ -135,6 +135,9 @@ func StatedLang(c *gin.Context) string {
 	if c == nil {
 		return ""
 	}
+	if c.Request == nil {
+		return ""
+	}
 
 	// 1. Try to get language from user settings (if already loaded by TokenAuth or other middleware)
 	userSetting, settingLoaded := common.GetContextKeyType[dto.UserSetting](c, constant.ContextKeyUserSetting)
@@ -215,3 +218,4 @@ func IsSupported(lang string) bool {
 	lang = normalizeLang(lang)
 	return slices.Contains(SupportedLanguages(), lang)
 }
+
