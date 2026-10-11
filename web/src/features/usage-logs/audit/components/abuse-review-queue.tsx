@@ -15,6 +15,7 @@ import {
   type AbuseReview,
   type AbuseReviewStatus,
 } from '../api'
+import { formatAbuseAction, formatAbuseEvidence } from '../abuse-evidence'
 
 function formatReviewTime(timestamp: number) {
   if (!timestamp) return '-'
@@ -55,7 +56,7 @@ export function AbuseReviewQueue() {
       header: t('Signal'),
       cell: ({ row }: { row: { original: AbuseReview } }) => (
         <div className='space-y-1'>
-          <div className='font-medium'>{row.original.action}</div>
+          <div className='font-medium'>{formatAbuseAction(row.original.action)}</div>
           <div className='text-muted-foreground text-xs'>
             {t('Event')} {row.original.event_id}
           </div>
@@ -90,9 +91,9 @@ export function AbuseReviewQueue() {
       accessorKey: 'evidence_json',
       header: t('Redacted evidence'),
       cell: ({ row }: { row: { original: AbuseReview } }) => (
-        <pre className='bg-muted max-w-80 overflow-x-auto rounded-md p-2 text-xs whitespace-pre-wrap'>
-          {row.original.evidence_json || '{}'}
-        </pre>
+        <div className='bg-muted max-w-80 whitespace-pre-wrap rounded-md p-2 text-xs'>
+          {formatAbuseEvidence(row.original.action, row.original.evidence_json)}
+        </div>
       ),
     },
     {
@@ -242,3 +243,4 @@ export function AbuseReviewQueue() {
     </div>
   )
 }
+
