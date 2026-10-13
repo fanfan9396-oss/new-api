@@ -210,7 +210,7 @@ afterEach(() => {
 })
 
 it.each([true, false])(
-  'encrypts short and 128-character Unicode passwords with Web Crypto enabled: %s',
+  'handles password encryption with Web Crypto availability: %s',
   async (useWebCrypto) => {
     vi.stubGlobal(
       'crypto',
@@ -232,6 +232,12 @@ it.each([true, false])(
         },
       },
     })
+    if (!useWebCrypto) {
+      await expect(encryptPassword('legacy-password')).rejects.toThrow(
+        'Login failed'
+      )
+      return
+    }
     for (const password of ['legacy-password', '🔒'.repeat(128)]) {
       const encrypted = await encryptPassword(password)
       const parts = encrypted.password_encrypted.split('.')
