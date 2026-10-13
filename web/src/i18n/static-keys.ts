@@ -914,4 +914,5 @@ export const STATIC_I18N_KEYS = [
   'Verification method',
   'Admin permissions updated',
   'Provider ID',
+  'Too many requests. Please try again in {{seconds}} seconds.',
 ] as const

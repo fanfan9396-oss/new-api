@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/http"
 	"strconv"
+	"strings"
 
 	"github.com/QuantumNous/new-api/common"
 	"github.com/QuantumNous/new-api/logger"
@@ -192,6 +193,23 @@ func CriticalRateLimit() func(c *gin.Context) {
 		return rateLimitFactory(common.CriticalRateLimitNum, common.CriticalRateLimitDuration, "CT")
 	}
 	return defNext
+}
+
+// ScopedCriticalRateLimit keeps unrelated sensitive workflows from consuming
+// one another's IP allowance while preserving the same limit for each scope.
+func ScopedCriticalRateLimit(scope string) func(c *gin.Context) {
+	if !common.CriticalRateLimitEnable {
+		return defNext
+	}
+	scope = strings.TrimSpace(scope)
+	if scope == "" {
+		return CriticalRateLimit()
+	}
+	return rateLimitFactory(
+		common.CriticalRateLimitNum,
+		common.CriticalRateLimitDuration,
+		"CT:"+scope,
+	)
 }
 
 func UserCriticalRateLimit(scope string) func(c *gin.Context) {

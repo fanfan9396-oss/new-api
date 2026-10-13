@@ -132,6 +132,32 @@ export function getServerErrorStatus(value: unknown): number | undefined {
   return undefined
 }
 
+function getHeaderValue(headers: unknown, name: string): unknown {
+  if (!isRecord(headers)) return undefined
+  if (typeof headers.get === 'function') {
+    return (headers.get as (key: string) => unknown).call(headers, name)
+  }
+  const expected = name.toLowerCase()
+  for (const [key, value] of Object.entries(headers)) {
+    if (key.toLowerCase() === expected) return value
+  }
+  return undefined
+}
+
+export function getServerRetryAfterSeconds(value: unknown): number | undefined {
+  for (const source of getServerErrorSources(value)) {
+    const response = isRecord(source.response) ? source.response : undefined
+    const raw = getHeaderValue(
+      response?.headers ?? source.headers,
+      'retry-after'
+    )
+    const seconds =
+      typeof raw === 'number' ? raw : Number.parseInt(String(raw), 10)
+    if (Number.isFinite(seconds) && seconds > 0) return Math.ceil(seconds)
+  }
+  return undefined
+}
+
 export function isServerErrorCancelled(value: unknown): boolean {
   return getServerErrorSources(value).some(
     (source) =>
@@ -219,6 +245,17 @@ export function getServerErrorMessage(
   const status = getServerErrorStatus(value)
   if (status === 304) return i18next.t('Content not modified!')
   if (status === 204) return i18next.t('Content not found.')
+  if (status === 429) {
+    const seconds = getServerRetryAfterSeconds(value)
+    return seconds
+      ? i18next.t(
+          'Too many requests. Please try again in {{seconds}} seconds.',
+          {
+            seconds,
+          }
+        )
+      : i18next.t('Too many requests')
+  }
   for (const source of sources) {
     const message = messageText(source.message)
     if (message) return message

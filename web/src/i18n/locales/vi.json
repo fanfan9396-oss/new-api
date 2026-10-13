@@ -6467,6 +6467,7 @@
     "Too many incorrect codes. Start email verification again.": "Nhập sai mã quá nhiều lần. Vui lòng bắt đầu xác minh email lại.",
     "Too many login sessions were created recently. Please wait for the rolling window to pass, then try again.": "Gần đây đã tạo quá nhiều phiên đăng nhập. Vui lòng chờ cửa sổ thời gian trượt kết thúc rồi thử lại.",
     "Too many requests": "Quá nhiều yêu cầu",
+    "Too many requests. Please try again in {{seconds}} seconds.": "Quá nhiều yêu cầu. Vui lòng thử lại sau {{seconds}} giây.",
     "Tool / function declarations the model may call": "Khai báo công cụ / hàm mà model có thể gọi",
     "Tool identifier": "Định danh công cụ",
     "Tool price settings": "Cài đặt giá công cụ",

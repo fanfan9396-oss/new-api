@@ -76,6 +76,40 @@ func TestRedisIPRateLimiterThresholdTTLAndNamespace(t *testing.T) {
 	assert.True(t, redisServer.Exists(legacyKey), "the v2 counter must not touch an old list key")
 }
 
+func TestScopedCriticalRateLimiterUsesIndependentRedisBuckets(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	redisServer, _ := useRateLimitMiniRedis(t)
+
+	previousEnabled := common.CriticalRateLimitEnable
+	previousMaximum := common.CriticalRateLimitNum
+	previousDuration := common.CriticalRateLimitDuration
+	common.CriticalRateLimitEnable = true
+	common.CriticalRateLimitNum = 1
+	common.CriticalRateLimitDuration = 31
+	t.Cleanup(func() {
+		common.CriticalRateLimitEnable = previousEnabled
+		common.CriticalRateLimitNum = previousMaximum
+		common.CriticalRateLimitDuration = previousDuration
+	})
+
+	router := gin.New()
+	require.NoError(t, router.SetTrustedProxies(nil))
+	router.GET("/login", ScopedCriticalRateLimit("login"), func(c *gin.Context) {
+		c.Status(http.StatusNoContent)
+	})
+	router.GET("/logout", ScopedCriticalRateLimit("auth-logout"), func(c *gin.Context) {
+		c.Status(http.StatusNoContent)
+	})
+
+	remoteAddr := "192.0.2.11:12345"
+	assert.Equal(t, http.StatusNoContent, performRateLimitRequest(router, "/login", remoteAddr).Code)
+	assert.Equal(t, http.StatusTooManyRequests, performRateLimitRequest(router, "/login", remoteAddr).Code)
+	assert.Equal(t, http.StatusNoContent, performRateLimitRequest(router, "/logout", remoteAddr).Code)
+
+	assert.True(t, redisServer.Exists(redisIPRateLimitKey("CT:login", "192.0.2.11")))
+	assert.True(t, redisServer.Exists(redisIPRateLimitKey("CT:auth-logout", "192.0.2.11")))
+}
+
 func TestRedisUserRateLimiterUsesSharedFixedWindow(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	redisServer, _ := useRateLimitMiniRedis(t)

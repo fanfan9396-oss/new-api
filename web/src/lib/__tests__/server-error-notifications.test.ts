@@ -242,6 +242,25 @@ it.each([
   expect(getServerErrorMessage(error, 'Operation failed')).toBe(expected)
 })
 
+it('uses Retry-After to explain a rate limit instead of showing the Axios status text', () => {
+  const error = new AxiosError(
+    'Request failed with status code 429',
+    'ERR_BAD_REQUEST',
+    undefined,
+    undefined,
+    {
+      data: '',
+      status: 429,
+      statusText: 'Too Many Requests',
+      headers: new AxiosHeaders({ 'retry-after': '75' }),
+      config: { headers: new AxiosHeaders() },
+    }
+  )
+  expect(getServerErrorMessage(error)).toBe(
+    'Too many requests. Please try again in 75 seconds.'
+  )
+})
+
 it('preserves safe authentication messages and recognizes their original failure without exposing its payload', () => {
   const notify = vi.spyOn(toast, 'error').mockReturnValue('error')
   const original = new AxiosError(

@@ -6467,6 +6467,7 @@
     "Too many incorrect codes. Start email verification again.": "驗證碼錯誤次數過多，請重新開始信箱驗證。",
     "Too many login sessions were created recently. Please wait for the rolling window to pass, then try again.": "近期建立的登入工作階段過多。請等待滾動時間窗口結束後再試。",
     "Too many requests": "請求過於頻繁",
+    "Too many requests. Please try again in {{seconds}} seconds.": "請求過於頻繁，請在 {{seconds}} 秒後重試。",
     "Tool / function declarations the model may call": "模型可呼叫的工具 / 函數聲明",
     "Tool identifier": "工具標識",
     "Tool price settings": "工具價格設定",

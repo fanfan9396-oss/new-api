@@ -19,6 +19,7 @@ For commercial licensing, please contact support@quantumnous.com
 import axios from 'axios'
 
 import {
+  getServerErrorMessage,
   getServerErrorMessageKey,
   getServerMessage,
   safeServerErrorMessage,
@@ -47,8 +48,7 @@ export class AuthOperationError extends Error {
             ? 'Please try again later.'
             : undefined) ||
           getServerMessage(error.response?.data) ||
-          error.message ||
-          fallback,
+          getServerErrorMessage(error, fallback),
         error.response?.data?.code,
         { cause: error }
       )

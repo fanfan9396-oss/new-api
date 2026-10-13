@@ -37,6 +37,12 @@ func ServeFrontendFiles(frontendFS static.ServeFileSystem) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		urlPath := c.Request.URL.Path
 		if !frontendFS.Exists("/", urlPath) {
+			// A stale browser may request a chunk from the previous build. Returning
+			// index.html here makes the browser parse HTML as JavaScript and masks the
+			// recoverable chunk failure as a generic application error.
+			if strings.HasPrefix(urlPath, "/static/") {
+				c.AbortWithStatus(http.StatusNotFound)
+			}
 			return
 		}
 		c.Abort()

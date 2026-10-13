@@ -101,6 +101,6 @@ func TestServeFrontendFilesCompressesEachFileOnce(t *testing.T) {
 	assert.Equal(t, "./", index.Header().Get("Location"))
 
 	missing := performFrontendRequest(router, http.MethodGet, "/static/js/missing.js", "gzip")
-	assert.Equal(t, http.StatusTeapot, missing.Code)
-	assert.Equal(t, "fallback", missing.Body.String())
+	assert.Equal(t, http.StatusNotFound, missing.Code)
+	assert.Empty(t, missing.Body.String())
 }

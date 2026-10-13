@@ -6467,6 +6467,7 @@
     "Too many incorrect codes. Start email verification again.": "コードの入力ミスが多すぎます。メール認証をやり直してください。",
     "Too many login sessions were created recently. Please wait for the rolling window to pass, then try again.": "最近作成されたログインセッションが多すぎます。ローリングウィンドウが経過してから、もう一度お試しください。",
     "Too many requests": "リクエストが多すぎます",
+    "Too many requests. Please try again in {{seconds}} seconds.": "リクエストが多すぎます。{{seconds}} 秒後にもう一度お試しください。",
     "Tool / function declarations the model may call": "モデルが呼び出せるツール / 関数の宣言",
     "Tool identifier": "ツールID",
     "Tool price settings": "ツール価格設定",

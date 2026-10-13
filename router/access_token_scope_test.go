@@ -1,15 +1,19 @@
 package router
 
 import (
+	"bytes"
 	"go/ast"
 	"go/parser"
 	"go/token"
+	"net/http"
+	"net/http/httptest"
 	"path/filepath"
 	"strconv"
 	"strings"
 	"testing"
 
 	"github.com/QuantumNous/new-api/common"
+	"github.com/QuantumNous/new-api/i18n"
 	"github.com/QuantumNous/new-api/middleware"
 	"github.com/QuantumNous/new-api/service"
 	"github.com/QuantumNous/new-api/service/authz"
@@ -93,6 +97,54 @@ func newAccessTokenScopeTestEngine(t *testing.T) *gin.Engine {
 		SetTaskRouter(engine)
 	})
 	return engine
+}
+
+func TestAuthenticationRoutesUseSeparateCriticalRateLimitBuckets(t *testing.T) {
+	previousRedis := common.RedisEnabled
+	previousGlobalAPIEnabled := common.GlobalApiRateLimitEnable
+	previousCriticalEnabled := common.CriticalRateLimitEnable
+	previousCriticalNum := common.CriticalRateLimitNum
+	previousCriticalDuration := common.CriticalRateLimitDuration
+	previousTurnstile := common.TurnstileCheckEnabled
+	common.RedisEnabled = false
+	common.GlobalApiRateLimitEnable = false
+	common.CriticalRateLimitEnable = true
+	common.CriticalRateLimitNum = 2
+	common.CriticalRateLimitDuration = 60
+	common.TurnstileCheckEnabled = false
+	t.Cleanup(func() {
+		common.RedisEnabled = previousRedis
+		common.GlobalApiRateLimitEnable = previousGlobalAPIEnabled
+		common.CriticalRateLimitEnable = previousCriticalEnabled
+		common.CriticalRateLimitNum = previousCriticalNum
+		common.CriticalRateLimitDuration = previousCriticalDuration
+		common.TurnstileCheckEnabled = previousTurnstile
+	})
+	require.NoError(t, i18n.Init())
+
+	engine := gin.New()
+	require.NoError(t, engine.SetTrustedProxies(nil))
+	SetApiRouter(engine)
+	remoteAddr := "203.0.113.230:42001"
+	request := func(path, body string) *httptest.ResponseRecorder {
+		recorder := httptest.NewRecorder()
+		req := httptest.NewRequest(http.MethodPost, path, bytes.NewBufferString(body))
+		req.RemoteAddr = remoteAddr
+		req.Header.Set("Content-Type", "application/json")
+		engine.ServeHTTP(recorder, req)
+		return recorder
+	}
+
+	for range 2 {
+		response := request("/api/user/login", "{")
+		assert.Equal(t, http.StatusOK, response.Code, response.Body.String())
+	}
+	assert.Equal(t, http.StatusOK, request("/api/user/auth/logout", "").Code)
+	assert.Equal(t, http.StatusTooManyRequests, request("/api/user/login", "{").Code)
+	assert.NotEqual(t, http.StatusTooManyRequests, request("/api/user/auth/refresh", "").Code)
+	for range 3 {
+		assert.Equal(t, http.StatusOK, request("/api/user/auth/logout", "").Code)
+	}
 }
 
 func TestAccessTokenRouteRulesCoverEveryDashboardRoute(t *testing.T) {

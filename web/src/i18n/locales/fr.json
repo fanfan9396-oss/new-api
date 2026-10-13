@@ -6467,6 +6467,7 @@
     "Too many incorrect codes. Start email verification again.": "Trop de codes incorrects. Recommencez la vérification de l’adresse e-mail.",
     "Too many login sessions were created recently. Please wait for the rolling window to pass, then try again.": "Trop de sessions de connexion ont été créées récemment. Attendez la fin de la fenêtre glissante, puis réessayez.",
     "Too many requests": "Trop de requêtes",
+    "Too many requests. Please try again in {{seconds}} seconds.": "Trop de requêtes. Veuillez réessayer dans {{seconds}} secondes.",
     "Tool / function declarations the model may call": "Déclarations d'outils / fonctions que le modèle peut appeler",
     "Tool identifier": "Identifiant d’outil",
     "Tool price settings": "Paramètres de prix des outils",
